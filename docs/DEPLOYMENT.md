@@ -161,6 +161,42 @@ migrate --noinput && python manage.py setup_schedules` to the web service in
 
 ---
 
+## 2a. Render free tier — no credit card
+
+Render asks for card verification to create a **Blueprint** and to create a
+**PostgreSQL instance**, even on the free plans. It does not ask when you create
+a free **web service** by hand. So the free route is to create the web service
+manually and host the database on Neon, which asks for nothing.
+
+This is not purely a workaround. Render deletes a free Postgres database after
+30 days; Neon's free project does not expire.
+
+**1. Database.** Sign up at neon.tech with GitHub, create a project, copy the
+connection string. The copy button gives you the *pooled* endpoint — the
+hostname contains `-pooler`. PgBouncer cannot hold server-side prepared
+statements and psycopg3 uses them by default, so with a pooled endpoint you must
+also set `DB_POOLED=true`. Either use the direct endpoint, or set that variable;
+both work, and pooled is the better choice on a free web instance that sleeps.
+
+**2. Migrate from your own machine first**, so a bad connection string fails
+somewhere legible instead of inside a build log:
+
+```
+$env:DATABASE_URL="<the Neon string>"; .\.venv\Scripts\python.exe manage.py migrate
+```
+
+**3. Web service.** New -> Web Service -> connect the repository -> plan Free.
+Build and start commands are the ones in `render.yaml`; copy the long
+`startCommand` verbatim, as it carries `migrate`, `bootstrap_admin` and
+`setup_schedules`, which a free instance has no shell to run any other way.
+
+Set `DATABASE_URL` to the Neon string rather than linking a Render database.
+Everything else is as section 2.
+
+**What you give up.** No worker, so no job runs by itself — see section 5. The
+web service sleeps after 15 minutes idle and takes about 50 seconds to wake.
+Neither is a fault to debug.
+
 ## 2b. Railway — alternative
 
 Managed Postgres, reads the `Procfile`, and runs a worker as a second service.
