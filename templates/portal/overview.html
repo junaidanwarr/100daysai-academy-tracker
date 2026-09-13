@@ -1,0 +1,129 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My roadmap{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ student.full_name }}</h1>
+    <p class="page-description">
+      {{ student.enrollment_id }}{% if student.batch %} · {{ student.batch }}{% endif %}
+    </p>
+  </div>
+  <div class="flex items-center gap-1">
+    {% student_badge student.status student.get_status_display %}
+  </div>
+</div>
+
+{% comment %}
+  The one thing that needs doing, said plainly and at the top. A student
+  should never have to infer their next action from a status name.
+{% endcomment %}
+{% if needs_resubmission %}
+  <div class="alert-box alert-warning" role="status">
+    Your research needs another attempt. Open
+    <a href="{% url 'portal:research' %}">My research</a> to read the feedback and submit a new version.
+  </div>
+{% elif awaiting_review %}
+  <div class="alert-box alert-info" role="status">
+    Research version {{ latest_submission.version }} is with your instructor. You will see the
+    decision here once it has been reviewed.
+  </div>
+{% elif overdue %}
+  <div class="alert-box alert-warning" role="status">
+    Your research was due {{ student.research_deadline|date:"d M Y" }} and has not been submitted.
+    Speak to your instructor if you need more time.
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2>My roadmap</h2>
+      <p>Where you are in the programme.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="progress-labels"><span>Journey completed</span><span>{{ student.progress_percent }}%</span></div>
+    <div class="progress"><div class="progress-fill" style="width: {{ student.progress_percent }}%"></div></div>
+
+    <div class="grid mt-2" style="grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:0.5rem">
+      {% for stage in stages %}
+        <div class="stage-pill {% if stage.done %}done{% elif stage.current %}current{% endif %}">
+          {% if stage.done %}✓ {% endif %}{{ stage.label }}
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if student.research_deadline %}
+      <p class="muted mt-2 mb-0">Research due {{ student.research_deadline|date:"d M Y" }}</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid-stats mt-2">
+  <div class="stat">
+    <p class="stat-label">Research attempts</p>
+    <p class="stat-value">{{ submission_count }}</p>
+    <p class="stat-hint">Every attempt is kept, with its feedback.</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Assignment attempts</p>
+    <p class="stat-value">{{ assignment_count }}</p>
+    <p class="stat-hint">
+      {% if assignments_awaiting %}{{ assignments_awaiting }} awaiting review.{% else %}None awaiting review.{% endif %}
+    </p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">My channels</p>
+    <p class="stat-value">{{ channels|length }}</p>
+    <p class="stat-hint">Recorded by your instructor after approval.</p>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div><h2>Latest research decision</h2></div>
+    <a href="{% url 'portal:research' %}" class="btn-secondary btn-sm">See all attempts</a>
+  </div>
+  {% if latest_submission %}
+    <div class="card-body">
+      <div class="flex items-center gap-1">
+        <strong>Version {{ latest_submission.version }}</strong>
+        {% submission_badge latest_submission.status latest_submission.get_status_display %}
+      </div>
+      {% if latest_submission.topic %}<p class="muted mt-1">{{ latest_submission.topic }}</p>{% endif %}
+      {% comment %}
+        The score is shown only once a decision exists. A running total on an
+        unreviewed attempt would read as a verdict that nobody has given.
+      {% endcomment %}
+      {% if latest_submission.reviewed_at %}
+        <p class="mt-1 mb-0">Score: <strong>{{ latest_submission.score|dash }}%</strong></p>
+        {% if latest_submission.feedback %}<p class="mt-1 mb-0">{{ latest_submission.feedback }}</p>{% endif %}
+        {% if latest_submission.rejection_reason %}
+          <p class="mt-1 mb-0">Reason given: {{ latest_submission.rejection_reason }}</p>
+        {% endif %}
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No research submitted yet</p>
+      <p class="empty-description">
+        <a href="{% url 'portal:research' %}">Start your research submission</a> when you are ready.
+      </p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card mt-2">
+  <div class="card-header"><div><h2>My instructor</h2></div></div>
+  <div class="card-body">
+    {% if student.instructor %}
+      <p class="detail-value mb-0">{{ student.instructor.full_name }}</p>
+      <p class="muted mb-0">{{ student.instructor.email }}</p>
+    {% else %}
+      <p class="muted mb-0">No instructor assigned yet.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

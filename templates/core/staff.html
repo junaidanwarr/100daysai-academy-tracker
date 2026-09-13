@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Staff · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Staff accounts</h1>
+    <p class="page-description">
+      Super Admins must complete two-factor authentication before they hold a session.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Role</th><th>Two-factor</th><th>Status</th>
+            <th>Last sign-in</th><th class="numeric">Students</th><th class="numeric">Batches</th></tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td style="font-weight:500;color:var(--slate-900)">{{ u.full_name }}</td>
+            <td class="muted">{{ u.email }}</td>
+            <td>
+              {% if u.role == 'SUPER_ADMIN' %}{% tone_badge u.get_role_display "brand" %}
+              {% elif u.role == 'INSTRUCTOR' %}{% tone_badge u.get_role_display "blue" %}
+              {% else %}{% tone_badge u.get_role_display "slate" %}{% endif %}
+            </td>
+            <td>
+              {% if u.role == 'SUPER_ADMIN' %}
+                {% if u.mfa_enrolled %}{% tone_badge "Enrolled" "emerald" %}{% else %}{% tone_badge "Not enrolled" "amber" %}{% endif %}
+              {% else %}
+                <span class="tiny">Not required</span>
+              {% endif %}
+            </td>
+            <td>{% if u.is_active %}{% tone_badge "Active" "emerald" %}{% else %}{% tone_badge "Disabled" "slate" %}{% endif %}</td>
+            <td class="muted">{{ u.last_login_at|date:"d M Y, H:i"|default:"—" }}</td>
+            <td class="numeric">{{ u.student_count }}</td>
+            <td class="numeric">{{ u.batch_count }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="tiny" style="padding:0.75rem 1.25rem;border-top:1px solid var(--slate-100)">
+    Account creation and password resets are handled through the Django admin.
+    Passwords are never displayed anywhere in this interface.
+  </p>
+</div>
+{% endblock %}

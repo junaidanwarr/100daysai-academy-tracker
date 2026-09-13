@@ -1,0 +1,15 @@
+# Deploying from Windows to a Linux host. Normalise to LF in the repository so
+# Procfile, shell commands and Python files arrive with the endings Linux
+# expects — a CRLF Procfile silently fails to parse on Render and Heroku.
+* text=auto eol=lf
+
+# Binary files must never be converted.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.sqlite3 binary

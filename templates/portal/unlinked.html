@@ -1,0 +1,20 @@
+{% extends "portal/base.html" %}
+{% block portal_title %}My portal{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Your portal</h1>
+</div>
+
+<div class="card">
+  <div class="empty">
+    <p class="empty-title">No student record is linked to this login yet</p>
+    <p class="empty-description">
+      Your account exists, but it is not yet connected to an enrolment. Until it
+      is, there is nothing here to show — no roadmap, no research history and no
+      channel. Ask your instructor to link your Enrollment ID to this email
+      address and everything will appear.
+    </p>
+  </div>
+</div>
+{% endblock %}

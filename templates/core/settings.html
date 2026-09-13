@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Settings · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Settings</h1>
+    <p class="page-description">
+      Operational thresholds live here, not in code. Changing the research window re-dates deadlines
+      on the next scheduled run.
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 grid" style="gap:1rem">
+    {% for category, items in grouped_settings %}
+      <div class="card">
+        <div class="card-header"><div><h2>{{ category|title }}</h2></div></div>
+        <div class="card-body">
+          {% if not editable %}<p class="muted">You have read-only access to these settings.</p>{% endif %}
+          {% for setting in items %}
+            <form method="post" class="flex flex-wrap gap-2 items-center"
+                  style="padding:0.75rem 0;border-top:1px solid var(--slate-100)">
+              {% csrf_token %}
+              <input type="hidden" name="key" value="{{ setting.key }}">
+              <div class="field filter-grow mb-0">
+                <label for="{{ setting.key }}">{{ setting.label }}</label>
+                {% if setting.value_type == "bool" %}
+                  <select id="{{ setting.key }}" name="value" class="input" {% if not editable %}disabled{% endif %}>
+                    <option value="true" {% if setting.value %}selected{% endif %}>Enabled</option>
+                    <option value="false" {% if not setting.value %}selected{% endif %}>Disabled</option>
+                  </select>
+                {% else %}
+                  <input id="{{ setting.key }}" name="value" class="input"
+                         type="{% if setting.value_type == 'int' %}number{% else %}text{% endif %}"
+                         {% if setting.value_type == 'int' %}min="1"{% endif %}
+                         value="{{ setting.value }}" {% if not editable %}disabled{% endif %}>
+                {% endif %}
+                {% if setting.description %}<span class="helptext">{{ setting.description }}</span>{% endif %}
+              </div>
+              {% if editable %}<button type="submit" class="btn-secondary btn-sm">Save</button>{% endif %}
+            </form>
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Integrations</h2><p>What is configured on this deployment right now.</p></div></div>
+      <ul class="list">
+        <li class="list-row">
+          <div><p class="detail-value">YouTube Data API</p><p class="tiny mono">YOUTUBE_API_KEY</p></div>
+          {% if flags.youtube_public_api %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+        <li class="list-row">
+          <div><p class="detail-value">Google OAuth</p><p class="tiny mono">GOOGLE_CLIENT_ID / SECRET</p></div>
+          {% if flags.youtube_oauth %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+        <li class="list-row">
+          <div><p class="detail-value">Email notifications</p><p class="tiny mono">RESEND_API_KEY</p></div>
+          {% if flags.email %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+        <li class="list-row">
+          <div><p class="detail-value">SMS notifications</p><p class="tiny mono">TWILIO_*</p></div>
+          {% if flags.sms %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+        <li class="list-row">
+          <div><p class="detail-value">WhatsApp notifications</p><p class="tiny mono">WHATSAPP_*</p></div>
+          {% if flags.whatsapp %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+        <li class="list-row">
+          <div><p class="detail-value">LMS webhook</p><p class="tiny mono">LMS_WEBHOOK_SECRET</p></div>
+          {% if flags.lms_webhook %}{% tone_badge "Configured" "emerald" %}{% else %}{% tone_badge "Not set" "slate" %}{% endif %}
+        </li>
+      </ul>
+      <p class="tiny" style="padding:0.75rem 1.25rem;border-top:1px solid var(--slate-100)">
+        Unconfigured channels do not fail silently — notifications are recorded as skipped with the reason.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Alert rules</h2><p>Conditions evaluated on every scan.</p></div></div>
+      <ul class="list">
+        {% for rule in alert_rules %}
+          <li>
+            <div class="list-row">
+              <p class="detail-value">{{ rule.name }}</p>
+              {% if rule.is_active %}{% tone_badge "Active" "emerald" %}{% else %}{% tone_badge "Off" "slate" %}{% endif %}
+            </div>
+            <p class="tiny mono">{{ rule.evaluator_key }}</p>
+            <p class="tiny">
+              {{ rule.get_priority_display }} · cooldown {{ rule.cooldown_hours }}h
+              {% if rule.params %}· {{ rule.params }}{% else %}· uses academy defaults{% endif %}
+            </p>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

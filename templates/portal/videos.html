@@ -1,0 +1,59 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My videos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My videos</h1>
+    <p class="page-description">{{ total }} recorded across your channels.</p>
+  </div>
+</div>
+
+{% if not sync_configured %}
+  <div class="alert-box alert-info" role="status">
+    Automatic syncing is not configured on this deployment yet, so this list may
+    be behind what is actually on YouTube.
+  </div>
+{% endif %}
+
+<div class="card">
+  {% if videos %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Channel</th>
+            <th>Type</th>
+            <th>Published</th>
+            <th class="text-right">Views</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in videos %}
+            <tr>
+              <td><a href="{% url 'portal:video_detail' v.pk %}">{{ v.title }}</a></td>
+              <td>{{ v.channel.channel_name }}</td>
+              <td>{{ v.get_video_type_display }}</td>
+              <td class="nowrap">{{ v.published_at|date:"d M Y"|dash }}</td>
+              <td class="text-right numeric">{{ v.latest_views|dash }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No videos yet</p>
+      <p class="empty-description">
+        {% if has_channel %}
+          Your videos will appear here once your channel has been synced.
+        {% else %}
+          You have no channel recorded yet, so there is nothing to sync.
+        {% endif %}
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

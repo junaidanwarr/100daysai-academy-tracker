@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Sign in · 100DaysAI Academy Tracker{% endblock %}
+
+{% block body %}
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <div class="brand-mark">100</div>
+      <h1>100DaysAI Academy</h1>
+      <p class="page-description">Student &amp; channel tracking</p>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        {% if error %}<div class="alert-box alert-error" role="alert">{{ error }}</div>{% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+
+          <div class="field">
+            <label for="{{ form.email.id_for_label }}">Email address</label>
+            {{ form.email }}
+          </div>
+          <div class="field">
+            <label for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+          </div>
+
+          <button type="submit" class="btn-primary" style="width:100%">Sign in</button>
+        </form>
+
+        {% comment %}
+          No demo or default credentials are shown here, deliberately. Account
+          details are issued out of band; printing them on the sign-in screen
+          would hand them to anyone who reaches this page.
+        {% endcomment %}
+        <p class="muted mt-2" style="text-align:center;border-top:1px solid var(--slate-100);padding-top:1rem;">
+          Trouble signing in? Contact your academy administrator.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ batch.code }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ batch.code }} — {{ batch.name }}</h1>
+    <p class="page-description">
+      {{ batch.get_status_display }} · {{ batch.start_date|date:"d M Y" }} to {{ batch.end_date|date:"d M Y"|default:"—" }}
+      · Instructor: {{ batch.instructor.full_name|default:"unassigned" }}
+    </p>
+  </div>
+</div>
+
+<section class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Students</p><p class="stat-value">{{ stats.total }}</p></div>
+  <div class="stat"><p class="stat-label">At risk</p><p class="stat-value {% if stats.at_risk %}danger{% endif %}">{{ stats.at_risk }}</p></div>
+  <div class="stat"><p class="stat-label">Completed</p><p class="stat-value brand">{{ stats.completed }}</p></div>
+  <div class="stat"><p class="stat-label">Channels created</p><p class="stat-value">{{ stats.channels_created }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Research approval</p>
+    <p class="stat-value">{{ stats.approval_rate|dash }}{% if stats.approval_rate is not None %}%{% endif %}</p>
+    {% if stats.approval_rate is None %}<p class="stat-hint">Nothing reviewed yet</p>{% endif %}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Completion rate</p>
+    <p class="stat-value">{{ stats.completion_rate|dash }}{% if stats.completion_rate is not None %}%{% endif %}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Research window</p>
+    <p class="stat-value">{{ batch.effective_research_days }}<span style="font-size:1rem;font-weight:400"> days</span></p>
+    <p class="stat-hint">{% if batch.uses_override %}Batch override{% else %}Academy default{% endif %}</p>
+  </div>
+</section>
+
+<div class="card mt-2">
+  <div class="card-header"><div><h2>Roster</h2><p>{{ students|length }} student(s) in this batch.</p></div></div>
+  {% if students %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Enrollment ID</th><th>Name</th><th>Status</th><th>Research due</th><th class="numeric">Channels</th></tr></thead>
+        <tbody>
+          {% for s in students %}
+            <tr>
+              <td class="mono"><a href="{{ s.get_absolute_url }}">{{ s.enrollment_id }}</a></td>
+              <td style="font-weight:500;color:var(--slate-900)">{{ s.full_name }}</td>
+              <td>{% student_badge s.status s.get_status_display %}</td>
+              <td class="muted">{{ s.research_deadline|date:"d M Y"|default:"—" }}</td>
+              <td class="numeric">{{ s.channel_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No students in this batch</p>
+      <p class="empty-description">Enroll students and assign them to this batch.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% if batch.description %}
+  <div class="card mt-2">
+    <div class="card-header"><div><h2>About this batch</h2></div></div>
+    <div class="card-body"><p class="pre-wrap mb-0">{{ batch.description }}</p></div>
+  </div>
+{% endif %}
+{% endblock %}

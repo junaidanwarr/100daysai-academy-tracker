@@ -1,0 +1,41 @@
+{% extends "portal/base.html" %}
+{% block portal_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Notifications</h1>
+    <p class="page-description">Messages the academy has sent you.</p>
+  </div>
+  {% if notifications %}
+    <form method="post" action="{% url 'portal:mark_notifications_read' %}">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary btn-sm">Mark all as read</button>
+    </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  {% if notifications %}
+    <ul class="list">
+      {% for n in notifications %}
+        <li>
+          <div class="list-row">
+            <div>
+              <p class="detail-value mb-0">{{ n.title }}</p>
+              <p class="tiny muted mb-0">{{ n.created_at|date:"d M Y, H:i" }}</p>
+            </div>
+            {% if not n.read_at %}<span class="badge badge-blue">New</span>{% endif %}
+          </div>
+          {% if n.body %}<p class="mt-1 mb-0">{{ n.body }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">Nothing yet</p>
+      <p class="empty-description">You have no notifications.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "portal/base.html" %}
+{% block portal_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="page-description">Arrives in Phase {{ phase }}.</p>
+  </div>
+  <span class="phase-tag">P{{ phase }}</span>
+</div>
+
+{% comment %}
+  An honest "not built yet" rather than an empty table, which would read as
+  "you have none of these".
+{% endcomment %}
+<div class="card">
+  <div class="empty">
+    <p class="empty-title">This section is not built yet</p>
+    <p class="empty-description">{{ summary }}</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% comment %}
+  The portal reuses the console's shell markup and stylesheet on purpose — one
+  set of components to maintain, one visual language for the academy. What
+  differs is the menu, which comes from apps.portal.navigation, and the fact
+  that nothing here links out to a console route.
+{% endcomment %}
+
+{% block title %}{% block portal_title %}My portal{% endblock %} · 100DaysAI Academy{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Videos · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Videos</h1>
+    <p class="page-description">
+      Synced from the public YouTube Data API. Views, likes and comments are public figures;
+      impressions, click-through rate and retention appear per video only where the student has
+      authorized analytics.
+    </p>
+  </div>
+</div>
+
+{% if not sync_configured %}
+  <div class="alert-box alert-warning">
+    YOUTUBE_API_KEY is not configured on this deployment, so no video data can be fetched.
+    Anything listed here was recorded before that changed.
+  </div>
+{% endif %}
+
+<div class="card">
+  <form class="filter-bar" method="get">
+    <div class="field filter-grow">
+      <label for="search">Search</label>
+      <input id="search" name="search" value="{{ filters.search }}" class="input"
+             placeholder="Video title, channel or student name">
+    </div>
+    <div class="field" style="width:13rem">
+      <label for="type">Type</label>
+      <select id="type" name="type" class="input">
+        <option value="">Any type</option>
+        {% for value, label in types %}
+          <option value="{{ value }}" {% if filters.type == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary">Search</button>
+  </form>
+
+  {% if page.object_list %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Video</th><th>Channel</th><th>Student</th><th>Type</th>
+              <th>Published</th><th class="numeric">Views</th></tr>
+        </thead>
+        <tbody>
+          {% for v in page.object_list %}
+            <tr>
+              <td>
+                <a href="{% url 'youtube:video_detail' v.pk %}" style="font-weight:500;color:var(--slate-900)">{{ v.title }}</a>
+              </td>
+              <td class="muted"><a href="{{ v.channel.get_absolute_url }}">{{ v.channel.channel_name }}</a></td>
+              <td class="muted">
+                <a href="{{ v.channel.student.get_absolute_url }}">{{ v.channel.student.full_name }}</a>
+                <p class="tiny mono">{{ v.channel.student.enrollment_id }}</p>
+              </td>
+              <td>
+                {% if v.video_type == "SHORT" %}{% tone_badge "Short" "violet" %}
+                {% elif v.video_type == "LIVE" %}{% tone_badge "Live" "red" %}
+                {% else %}{% tone_badge v.get_video_type_display "slate" %}{% endif %}
+              </td>
+              <td class="muted">{{ v.published_at|date:"d M Y"|default:"—" }}</td>
+              {# dash, not 0: a video we have never snapshotted has no view figure. #}
+              <td class="numeric">{{ v.latest_views|dash }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if page.has_other_pages %}
+      <div class="card-body flex items-center gap-1">
+        {% if page.has_previous %}
+          <a class="btn-secondary btn-sm" href="?page={{ page.previous_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">Previous</a>
+        {% endif %}
+        <span class="tiny muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+        {% if page.has_next %}
+          <a class="btn-secondary btn-sm" href="?page={{ page.next_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">Next</a>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No videos</p>
+      <p class="empty-description">
+        Videos are created by channel synchronisation. A channel needs its YouTube channel ID
+        recorded before its uploads can be fetched.
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

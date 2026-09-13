@@ -1,0 +1,77 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}{{ channel.channel_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ channel.channel_name }}</h1>
+    <p class="page-description">
+      <a href="{% url 'portal:channels' %}">My channels</a>
+      {% if channel.channel_url %} · <a href="{{ channel.channel_url }}" rel="noopener noreferrer" target="_blank">Open on YouTube</a>{% endif %}
+    </p>
+  </div>
+  {% channel_badge channel.status channel.get_status_display %}
+</div>
+
+<div class="card">
+  <div class="card-header"><div><h2>Channel record</h2></div></div>
+  <div class="card-body">
+    <div class="detail-grid">
+      <div><p class="detail-label">Niche</p><p class="detail-value">{{ channel.niche|dash }}</p></div>
+      <div><p class="detail-label">Sub-niche</p><p class="detail-value">{{ channel.sub_niche|dash }}</p></div>
+      <div><p class="detail-label">Content format</p><p class="detail-value">{{ channel.content_format|dash }}</p></div>
+      <div><p class="detail-label">Content type</p><p class="detail-value">{{ channel.get_content_type_display|dash }}</p></div>
+      <div><p class="detail-label">Created</p><p class="detail-value">{{ channel.channel_creation_date|date:"d M Y"|dash }}</p></div>
+      <div><p class="detail-label">Last upload</p><p class="detail-value">{{ channel.last_upload_at|date:"d M Y"|dash }}</p></div>
+    </div>
+  </div>
+</div>
+
+{% comment %}
+  Say why a figure is missing rather than showing a blank. "We have not been
+  granted access" and "the number is zero" are completely different facts.
+{% endcomment %}
+{% if availability.public_reason or availability.private_reason %}
+  <div class="card mt-2">
+    <div class="card-header"><div><h2>What can be measured</h2></div></div>
+    <div class="card-body">
+      {% if availability.public_reason %}
+        <p class="mb-0">Public figures are unavailable: {{ availability.public_reason }}</p>
+      {% endif %}
+      {% if availability.private_reason %}
+        <p class="{% if availability.public_reason %}mt-1 {% endif %}mb-0">
+          Detailed analytics are unavailable: {{ availability.private_reason }}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div><h2>Recent videos</h2></div>
+    <a href="{% url 'portal:videos' %}" class="btn-secondary btn-sm">All my videos</a>
+  </div>
+  {% if videos %}
+    <ul class="list">
+      {% for v in videos %}
+        <li class="list-row">
+          <div>
+            <p class="detail-value mb-0"><a href="{% url 'portal:video_detail' v.pk %}">{{ v.title }}</a></p>
+            <p class="tiny muted mb-0">
+              {{ v.get_video_type_display }}
+              {% if v.published_at %} · published {{ v.published_at|date:"d M Y" }}{% endif %}
+            </p>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No videos recorded yet</p>
+      <p class="empty-description">Videos appear here once this channel has been synced.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

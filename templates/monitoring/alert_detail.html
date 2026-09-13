@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ alert.title }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ alert.title }}</h1>
+    <p class="page-description"><a href="{% url 'monitoring:alert_list' %}">Back to all alerts</a></p>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 card">
+    <div class="card-header"><div><h2>Details</h2></div></div>
+    <div class="card-body">
+      <div class="flex flex-wrap gap-1">
+        {% priority_badge alert.priority alert.get_priority_display %}
+        {% alert_status_badge alert.status alert.get_status_display %}
+        {% if alert.rule %}{% tone_badge "Rule: "|add:alert.rule.name "slate" %}{% endif %}
+      </div>
+
+      <div class="mt-2">
+        <p class="detail-label">Problem</p>
+        <p class="detail-value">{{ alert.problem }}</p>
+      </div>
+
+      {% if alert.recommended_action %}
+        <div class="mt-2">
+          <p class="detail-label">Recommended action</p>
+          <p class="detail-value" style="color:var(--brand-700)">{{ alert.recommended_action }}</p>
+        </div>
+      {% endif %}
+
+      <div class="detail-grid mt-2">
+        <div><p class="detail-label">Detected</p><p class="detail-value">{{ alert.detected_at|date:"d M Y, H:i" }}</p></div>
+        <div><p class="detail-label">Assigned to</p><p class="detail-value">{{ alert.assigned_to.full_name|default:"Unassigned" }}</p></div>
+        <div><p class="detail-label">Batch</p><p class="detail-value">{{ alert.batch.code|dash }}</p></div>
+        {% if alert.resolved_at %}
+          <div><p class="detail-label">Resolved</p><p class="detail-value">{{ alert.resolved_at|date:"d M Y, H:i" }}</p></div>
+          <div><p class="detail-label">Resolved by</p><p class="detail-value">{{ alert.resolved_by.full_name|dash }}</p></div>
+        {% endif %}
+      </div>
+
+      {% if alert.resolution_note %}
+        <div class="alert-box alert-info mt-2">
+          <p class="detail-label">Resolution note</p>
+          <p class="pre-wrap mb-0">{{ alert.resolution_note }}</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    {% if alert.student %}
+      <div class="card">
+        <div class="card-header"><div><h2>Student</h2></div></div>
+        <div class="card-body">
+          <a href="{{ alert.student.get_absolute_url }}" style="font-weight:500">{{ alert.student.full_name }}</a>
+          <p class="tiny mono mt-1">{{ alert.student.enrollment_id }}</p>
+          <div class="mt-1">{% student_badge alert.student.status alert.student.get_status_display %}</div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if can_update %}
+      <div class="card">
+        <div class="card-header"><div><h2>Triage</h2></div></div>
+        <div class="card-body">
+          <form method="post" action="{% url 'monitoring:alert_update' alert.pk %}">
+            {% csrf_token %}
+            <div class="field">
+              <label for="status">Status</label>
+              <select id="status" name="status" class="input">
+                {% for value, label in statuses %}
+                  <option value="{{ value }}" {% if alert.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="priority">Priority</label>
+              <select id="priority" name="priority" class="input">
+                {% for value, label in priorities %}
+                  <option value="{{ value }}" {% if alert.priority == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="assigned_to">Assigned to</label>
+              <select id="assigned_to" name="assigned_to" class="input">
+                <option value="">Unassigned</option>
+                {% for s in staff %}
+                  <option value="{{ s.pk }}" {% if alert.assigned_to_id == s.pk %}selected{% endif %}>{{ s.full_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="resolution_note">Resolution note</label>
+              <textarea id="resolution_note" name="resolution_note" rows="3" class="input"
+                        placeholder="What was done about this? Kept as a record of the follow-up."></textarea>
+            </div>
+            <button type="submit" class="btn-primary" style="width:100%">Update alert</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

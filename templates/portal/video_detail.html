@@ -1,0 +1,93 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}{{ video.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ video.title }}</h1>
+    <p class="page-description">
+      <a href="{% url 'portal:videos' %}">My videos</a> ·
+      <a href="{% url 'portal:channel_detail' channel.pk %}">{{ channel.channel_name }}</a>
+      {% if video.published_at %} · published {{ video.published_at|date:"d M Y" }}{% endif %}
+    </p>
+  </div>
+</div>
+
+<div class="grid-stats">
+  <div class="stat">
+    <p class="stat-label">Views</p>
+    <p class="stat-value">{{ public_snapshot.views|dash }}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Likes</p>
+    <p class="stat-value">{{ public_snapshot.likes|dash }}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Comments</p>
+    <p class="stat-value">{{ public_snapshot.comments|dash }}</p>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div>
+      <h2>Detailed analytics</h2>
+      <p>Impressions, click-through rate and watch time need your consent on the channel.</p>
+    </div>
+  </div>
+  {% if analytics_snapshot %}
+    <div class="card-body">
+      <div class="detail-grid">
+        <div><p class="detail-label">Impressions</p><p class="detail-value">{{ analytics_snapshot.impressions|dash }}</p></div>
+        <div><p class="detail-label">Click-through rate</p><p class="detail-value">{{ analytics_snapshot.impressions_ctr_percent|dash }}%</p></div>
+        <div><p class="detail-label">Watch time (minutes)</p><p class="detail-value">{{ analytics_snapshot.watch_time_minutes|dash }}</p></div>
+        <div><p class="detail-label">Average view duration</p><p class="detail-value">{{ analytics_snapshot.average_view_duration|dash }}</p></div>
+        <div><p class="detail-label">Average percentage viewed</p><p class="detail-value">{{ analytics_snapshot.average_percentage_viewed|dash }}%</p></div>
+        <div><p class="detail-label">Subscribers gained</p><p class="detail-value">{{ analytics_snapshot.subscribers_gained|dash }}</p></div>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">Not available</p>
+      <p class="empty-description">{{ availability.private_reason|default:"No analytics snapshot has been captured yet." }}</p>
+    </div>
+  {% endif %}
+</div>
+
+{% if traffic_sources %}
+  <div class="card mt-2">
+    <div class="card-header"><div><h2>Where the views came from</h2></div></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Source</th><th class="text-right">Views</th><th class="text-right">Share</th></tr></thead>
+        <tbody>
+          {% for s in traffic_sources %}
+            <tr>
+              <td>{{ s.source_type }}</td>
+              <td class="text-right numeric">{{ s.views }}</td>
+              <td class="text-right numeric">{{ s.share_percent|dash }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endif %}
+
+{% if retention_points %}
+  <div class="card mt-2">
+    <div class="card-header"><div><h2>Audience retention</h2></div></div>
+    <div class="card-body">
+      <div class="bar-chart">
+        {% for p in retention_points %}
+          <div class="bar-col">
+            <div class="bar" style="height: {{ p.audience_watch_ratio|bar_height:1 }}%"></div>
+          </div>
+        {% endfor %}
+      </div>
+      <p class="tiny muted mb-0">Proportion of viewers still watching, from start to finish.</p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

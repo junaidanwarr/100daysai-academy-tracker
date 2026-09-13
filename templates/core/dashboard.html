@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Dashboard · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+{% with c=counters %}
+<div class="page-header">
+  <div>
+    <h1>Welcome back, {{ user.get_short_name }}</h1>
+    <p class="page-description">{{ scope_note }}</p>
+  </div>
+</div>
+
+<section class="grid grid-stats" aria-label="Key figures">
+  <a class="stat" href="{% url 'academy:student_list' %}">
+    <p class="stat-label">Total students</p><p class="stat-value">{{ c.total_students }}</p>
+  </a>
+  <div class="stat"><p class="stat-label">Active</p><p class="stat-value success">{{ c.active_students }}</p></div>
+  <div class="stat"><p class="stat-label">In research</p><p class="stat-value">{{ c.in_research }}</p></div>
+  <div class="stat"><p class="stat-label">Pending review</p><p class="stat-value {% if c.pending_review %}warning{% endif %}">{{ c.pending_review }}</p></div>
+  <a class="stat" href="{% url 'academy:student_list' %}?preset=research-overdue">
+    <p class="stat-label">Overdue research</p><p class="stat-value {% if c.overdue_deadlines %}danger{% endif %}">{{ c.overdue_deadlines }}</p>
+  </a>
+  <a class="stat" href="{% url 'academy:student_list' %}?preset=at-risk">
+    <p class="stat-label">At risk</p><p class="stat-value {% if c.at_risk %}danger{% endif %}">{{ c.at_risk }}</p>
+  </a>
+  <a class="stat" href="{% url 'youtube:channel_list' %}">
+    <p class="stat-label">Channels created</p><p class="stat-value">{{ c.channels_created }}</p>
+  </a>
+  <div class="stat"><p class="stat-label">Active channels</p><p class="stat-value success">{{ c.active_channels }}</p></div>
+  <div class="stat"><p class="stat-label">Monetized</p><p class="stat-value brand">{{ c.monetized_channels }}</p></div>
+  <div class="stat"><p class="stat-label">Videos published</p><p class="stat-value">{{ c.total_videos }}</p></div>
+  <a class="stat" href="{% url 'academy:student_list' %}?preset=upload-target-missed">
+    <p class="stat-label">No recent uploads</p>
+    <p class="stat-value {% if c.no_recent_uploads %}warning{% endif %}">{{ c.no_recent_uploads }}</p>
+    <p class="stat-hint">Over {{ no_upload_days }} days</p>
+  </a>
+  <a class="stat" href="{% url 'academy:student_list' %}?preset=inactive">
+    <p class="stat-label">Inactive students</p>
+    <p class="stat-value {% if c.inactive_students %}warning{% endif %}">{{ c.inactive_students }}</p>
+    <p class="stat-hint">Over {{ inactivity_days }} days</p>
+  </a>
+  <a class="stat" href="{% url 'monitoring:alert_list' %}">
+    <p class="stat-label">Open alerts</p><p class="stat-value {% if c.open_alerts %}danger{% else %}success{% endif %}">{{ c.open_alerts }}</p>
+  </a>
+  <div class="stat"><p class="stat-label">Research approved</p><p class="stat-value success">{{ c.research_approved }}</p></div>
+  <div class="stat"><p class="stat-label">Research rejected</p><p class="stat-value warning">{{ c.research_rejected }}</p></div>
+  <div class="stat"><p class="stat-label">Batch completed</p><p class="stat-value brand">{{ c.completed }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Approval rate</p>
+    <p class="stat-value">{{ research_approval_rate|dash }}{% if research_approval_rate is not None %}%{% endif %}</p>
+    {% if research_approval_rate is None %}<p class="stat-hint">Nothing reviewed yet</p>{% endif %}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Channel creation</p>
+    <p class="stat-value">{{ channel_creation_rate|dash }}{% if channel_creation_rate is not None %}%{% endif %}</p>
+    {% if channel_creation_rate is None %}<p class="stat-hint">No students yet</p>{% endif %}
+  </div>
+</section>
+
+<section class="grid grid-2 mt-2">
+  <div class="card">
+    <div class="card-header"><div><h2>Students by roadmap stage</h2><p>Where the cohort currently sits.</p></div></div>
+    <div class="card-body">
+      {% with peak=stage_chart|max_count %}
+        {% if peak %}
+          <div class="bar-chart">
+            {% for row in stage_chart %}
+              <div class="bar-col">
+                <span class="bar-value">{{ row.count }}</span>
+                <div class="bar" style="height: {{ row.count|bar_height:peak }}%"></div>
+                <span class="bar-label">{{ row.label }}</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="empty-description">No students recorded yet.</p>
+        {% endif %}
+      {% endwith %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Status breakdown</h2><p>Largest groups first.</p></div></div>
+    <div class="card-body">
+      {% with peak=status_chart|max_count %}
+        {% for row in status_chart %}
+          <div class="hbar-row">
+            <span class="hbar-label">{{ row.status|title }}</span>
+            <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.count|bar_height:peak }}%"></div></div>
+            <span class="hbar-value">{{ row.count }}</span>
+          </div>
+        {% empty %}
+          <p class="empty-description">No students recorded yet.</p>
+        {% endfor %}
+      {% endwith %}
+    </div>
+  </div>
+</section>
+
+<section class="grid grid-2 mt-2">
+  <div class="card">
+    <div class="card-header">
+      <div><h2>Upcoming deadlines</h2><p>Research due in the next 7 days.</p></div>
+      <a href="{% url 'academy:student_list' %}?preset=research-due-soon" class="muted">View all</a>
+    </div>
+    {% if upcoming_deadlines %}
+      <ul class="list">
+        {% for s in upcoming_deadlines %}
+          <li class="list-row">
+            <div>
+              <a href="{{ s.get_absolute_url }}">{{ s.full_name }}</a>
+              <p class="tiny mono">{{ s.enrollment_id }}</p>
+            </div>
+            <div class="text-right">
+              <p class="muted">{{ s.research_deadline|date:"d M Y" }}</p>
+              {% student_badge s.status s.get_status_display %}
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">Nothing due this week</p>
+        <p class="empty-description">No research deadlines fall in the next seven days.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div><h2>Recent alerts</h2></div>
+      <a href="{% url 'monitoring:alert_list' %}" class="muted">View all</a>
+    </div>
+    {% if recent_alerts %}
+      <ul class="list">
+        {% for a in recent_alerts %}
+          <li>
+            <div class="list-row">
+              <a href="{% url 'monitoring:alert_detail' a.pk %}">{{ a.title }}</a>
+              {% priority_badge a.priority a.get_priority_display %}
+            </div>
+            <p class="tiny mt-1">{% if a.student %}{{ a.student.full_name }} · {{ a.student.enrollment_id }}{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">No open alerts</p>
+        <p class="empty-description">
+          Nothing needs attention right now. Alerts appear here automatically when a deadline slips
+          or a channel goes quiet.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endwith %}
+{% endblock %}

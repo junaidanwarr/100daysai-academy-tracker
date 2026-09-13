@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}New batch · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>New batch</h1>
+    <p class="page-description">
+      Every student must belong to a batch. Leave the research window blank to use the academy-wide
+      {{ default_research_days }} days.
+    </p>
+  </div>
+</div>
+
+<form method="post" style="max-width:44rem">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-body">{% include "_form.html" with wide_fields="description" %}</div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">Create batch</button>
+    <a href="{% url 'academy:batch_list' %}" class="btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% load academy_tags humanize %}
+{% block title %}{{ submission.student.full_name }} research v{{ submission.version }} · 100DaysAI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ submission.student.full_name }} — research v{{ submission.version }}</h1>
+    <p class="page-description">
+      <a href="{{ submission.student.get_absolute_url }}">{{ submission.student.enrollment_id }}</a>
+      · {{ submission.student.batch.code }}
+      · deadline {{ submission.student.research_deadline|date:"d M Y"|default:"—" }}
+    </p>
+  </div>
+  {% submission_badge submission.status submission.get_status_display %}
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Submission</h2>
+          <p>{% if submission.submitted_at %}Submitted {{ submission.submitted_at|date:"d M Y, H:i" }}{% else %}Not yet submitted{% endif %}</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div><p class="detail-label">Topic</p><p class="detail-value">{{ submission.topic|dash }}</p></div>
+          <div><p class="detail-label">Niche</p><p class="detail-value">{{ submission.niche|dash }}</p></div>
+          <div><p class="detail-label">Sub-niche</p><p class="detail-value">{{ submission.sub_niche|dash }}</p></div>
+          <div><p class="detail-label">Target audience</p><p class="detail-value">{{ submission.target_audience|dash }}</p></div>
+          <div><p class="detail-label">Target country</p><p class="detail-value">{{ submission.target_country|dash }}</p></div>
+          <div><p class="detail-label">Content format</p><p class="detail-value">{{ submission.content_format|dash }}</p></div>
+          <div>
+            <p class="detail-label">Video length</p>
+            <p class="detail-value">{% if submission.video_length_minutes %}{{ submission.video_length_minutes }} min{% else %}—{% endif %}</p>
+          </div>
+          <div><p class="detail-label">Upload frequency</p><p class="detail-value">{{ submission.upload_frequency|dash }}</p></div>
+          <div><p class="detail-label">Competition</p><p class="detail-value">{{ submission.get_competition_level_display|dash }}</p></div>
+          <div><p class="detail-label">Earning potential</p><p class="detail-value">{{ submission.get_earning_potential_display|dash }}</p></div>
+        </div>
+
+        {% if keyword_research %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Keyword research</p><p class="detail-value pre-wrap">{{ keyword_research }}</p>
+          </div>
+        {% endif %}
+        {% if submission.content_gap_analysis %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Content gap analysis</p><p class="detail-value pre-wrap">{{ submission.content_gap_analysis }}</p>
+          </div>
+        {% endif %}
+        {% if submission.monetization_potential %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Monetization potential</p><p class="detail-value pre-wrap">{{ submission.monetization_potential }}</p>
+          </div>
+        {% endif %}
+        {% if submission.notes %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Student notes</p><p class="detail-value pre-wrap">{{ submission.notes }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Competitor channels</h2>
+          <p>{{ verdict.headline }}</p>
+        </div>
+        {% if can_fetch_metrics and submission.competitors.all %}
+          <form method="post" action="{% url 'research:refresh_competitors' submission.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary btn-sm">Fetch figures from YouTube</button>
+          </form>
+        {% endif %}
+      </div>
+
+      {% if competitor_rows %}
+        <div class="card-body">
+          <p class="tiny">
+            Niche validation: {{ thresholds.min_videos }}-{{ thresholds.max_videos }} videos ·
+            subscribers at least {{ thresholds.min_subs_view_ratio_percent }}% of views ·
+            oldest video {{ thresholds.min_age_days }}-{{ thresholds.max_age_days }} days old ·
+            consistent growth with no single video carrying the channel.
+            These inform the decision; they do not make it.
+          </p>
+        </div>
+
+        <ul class="list">
+          {% for c, channel in competitor_rows %}
+            <li>
+              <div class="flex items-center gap-1" style="justify-content:space-between">
+                <div>
+                  <a href="{{ c.channel_url }}" target="_blank" rel="noopener noreferrer" style="font-weight:500">{{ c.channel_name }}</a>
+                  <p class="tiny">
+                    {% if c.subscriber_count is not None %}{{ c.subscriber_count|intcomma }} subs{% else %}— subs{% endif %} ·
+                    {% if c.view_count is not None %}{{ c.view_count|intcomma }} views{% else %}— views{% endif %} ·
+                    {% if c.video_count is not None %}{{ c.video_count }} videos{% else %}— videos{% endif %}
+                    {% if c.metrics_source %}· {{ c.get_metrics_source_display }}{% else %}· no figures recorded{% endif %}
+                  </p>
+                </div>
+                <span class="nowrap">
+                  {% if channel.passes_all %}{% tone_badge "Meets all rules" "emerald" %}
+                  {% elif channel.has_red_flag %}{% tone_badge "Red flag" "red" %}
+                  {% elif channel.failed %}{% tone_badge "Fails rules" "orange" %}
+                  {% else %}{% tone_badge "Not checked" "slate" %}{% endif %}
+                </span>
+              </div>
+
+              <ul class="list" style="margin-top:0.5rem">
+                {% for rule in channel.results %}
+                  <li style="padding:0.125rem 0;border:none">
+                    <span style="color:{% if rule.passed %}var(--emerald-600){% elif rule.failed %}var(--red-600){% else %}var(--slate-400){% endif %}">
+                      {% if rule.passed %}✓{% elif rule.failed %}✗{% else %}?{% endif %}
+                    </span>
+                    <span class="tiny">
+                      <strong>{{ rule.label }}</strong> — {{ rule.detail }}
+                      {% if rule.failed and rule.is_red_flag %}<strong style="color:var(--red-600)">Strongest warning sign.</strong>{% endif %}
+                    </span>
+                  </li>
+                {% endfor %}
+              </ul>
+
+              {% if c.notes %}<p class="tiny mt-1 muted">{{ c.notes }}</p>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">No competitors listed</p>
+          <p class="empty-description">
+            Without reference channels there is nothing to validate the niche against, so none of
+            the four rules could be applied.
+          </p>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if submission.criterion_scores.all %}
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2>Scores awarded</h2>
+            {% if submission.score is not None %}<p>Weighted total {{ submission.score }}%</p>{% endif %}
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Criterion</th><th class="numeric">Score</th><th class="numeric">Pass mark</th><th>Result</th><th>Note</th></tr></thead>
+            <tbody>
+              {% for cs in submission.criterion_scores.all %}
+                <tr>
+                  <td>{{ cs.criterion.name }}</td>
+                  <td class="numeric">{{ cs.score }} / {{ cs.criterion.max_score }}</td>
+                  <td class="numeric muted">{{ cs.criterion.min_passing_score }}</td>
+                  <td>
+                    <span style="color:{% if cs.passed %}var(--emerald-600){% else %}var(--red-600){% endif %}">
+                      {{ cs.passed|yesno:"Pass,Below" }}
+                    </span>
+                  </td>
+                  <td class="muted">{{ cs.evaluator_note|dash }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>{% if submission.is_closed %}Already reviewed{% else %}Evaluate{% endif %}</h2>
+          {% if not submission.is_closed %}<p>{{ criteria|length }} criteria in force.</p>{% endif %}
+        </div>
+      </div>
+      <div class="card-body">
+        {% if submission.is_closed %}
+          <div class="alert-box alert-info">
+            This attempt was reviewed on {{ submission.reviewed_at|date:"d M Y" }}
+            by {{ submission.evaluator.full_name|default:"a staff member" }}.
+            Reviewed attempts are never edited — the student resubmits, which creates
+            version {{ submission.version|add:1 }}.
+          </div>
+          {% if submission.feedback %}
+            <p class="detail-label mt-2">Feedback</p>
+            <p class="detail-value pre-wrap">{{ submission.feedback }}</p>
+          {% endif %}
+          {% if submission.rejection_reason %}
+            <p class="detail-label mt-2">Reason</p>
+            <p class="detail-value pre-wrap" style="color:var(--red-600)">{{ submission.rejection_reason }}</p>
+          {% endif %}
+
+        {% elif not may_review %}
+          <p class="muted mb-0">Your role may not review research submissions.</p>
+
+        {% else %}
+          {% if not criteria %}
+            <div class="alert-box alert-warning">
+              No active criteria are configured for this student's batch, so a score cannot be calculated.
+              You can still approve or send back with written feedback.
+            </div>
+          {% endif %}
+
+          <form method="post" id="review-form">
+            {% csrf_token %}
+
+            {% for row in form.criterion_rows %}
+              <div class="criterion-row" style="border:1px solid var(--slate-200);border-radius:var(--radius);padding:0.75rem;margin-bottom:0.5rem">
+                <div class="list-row">
+                  <div style="min-width:0">
+                    <p class="detail-value">
+                      {{ row.criterion.name }}{% if row.criterion.is_required %}<span class="required"> *</span>{% endif %}
+                    </p>
+                    <p class="tiny">
+                      weight {{ row.criterion.weightage }} · pass mark
+                      {{ row.criterion.min_passing_score }}/{{ row.criterion.max_score }}
+                      {% if row.criterion.evidence_required %} · evidence required{% endif %}
+                    </p>
+                  </div>
+                  <span class="score-readout nowrap" data-for="{{ row.criterion.pk }}"
+                        style="font-weight:600;font-variant-numeric:tabular-nums">
+                    0/{{ row.criterion.max_score|floatformat:0 }}
+                  </span>
+                </div>
+                {% if row.criterion.description %}
+                  <p class="tiny mt-1">{{ row.criterion.description }}</p>
+                {% endif %}
+                <div class="mt-1">{{ row.score_field }}</div>
+                <div class="mt-1">{{ row.note_field }}</div>
+              </div>
+            {% endfor %}
+
+            {% if criteria %}
+              <div class="alert-box alert-info" id="score-preview">
+                <div class="list-row">
+                  <span class="detail-label mb-0">Weighted total</span>
+                  <strong id="score-total" style="font-size:1.125rem">0%</strong>
+                </div>
+                {% comment %}
+                  Deliberately not "All required criteria met" — the script
+                  below replaces this on load, and if it ever fails to run, the
+                  text left on screen must not be the reassuring one. The server
+                  recomputes the real verdict on submit either way.
+                {% endcomment %}
+                <p class="tiny mt-1 mb-0" id="score-note">Move a slider to see the running total.</p>
+              </div>
+            {% endif %}
+
+            <div class="field mt-2">
+              <label for="{{ form.decision.id_for_label }}">Decision</label>
+              {{ form.decision }}
+              {{ form.decision.errors }}
+            </div>
+            <div class="field">
+              <label for="{{ form.feedback.id_for_label }}">{{ form.feedback.label }}</label>
+              {{ form.feedback }}
+            </div>
+            <div class="field">
+              <label for="{{ form.rejection_reason.id_for_label }}">{{ form.rejection_reason.label }}</label>
+              {{ form.rejection_reason }}
+            </div>
+
+            <p class="tiny">
+              Recording a review closes this attempt permanently. A resubmission creates a new version
+              and leaves this one intact.
+            </p>
+            <button type="submit" class="btn-primary" style="width:100%">Record review</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Version history</h2><p>Nothing here is ever overwritten.</p></div></div>
+      <ol class="list" style="list-style:none">
+        {% for h in history %}
+          <li {% if h.pk == submission.pk %}style="background:var(--brand-50)"{% endif %}>
+            <div class="list-row">
+              <a href="{% url 'research:submission_detail' h.pk %}">
+                Version {{ h.version }}{% if h.pk == submission.pk %} (viewing){% endif %}
+              </a>
+              {% submission_badge h.status h.get_status_display %}
+            </div>
+            <p class="tiny mt-1">
+              {% if h.submitted_at %}Submitted {{ h.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}
+              {% if h.score is not None %} · {{ h.score }}%{% endif %}
+            </p>
+            {% if h.rejection_reason %}
+              <p class="tiny" style="color:var(--red-600)">{{ h.rejection_reason }}</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+    </div>
+  </div>
+</div>
+
+{% if may_review and criteria %}
+<script>
+/*
+ * Live weighted total. Mirrors apps/research/scoring.py exactly so the
+ * evaluator sees the figure that will actually be stored — the server
+ * recomputes it authoritatively on submit regardless.
+ */
+(function () {
+  const inputs = Array.from(document.querySelectorAll('.score-input'));
+  const totalEl = document.getElementById('score-total');
+  const noteEl = document.getElementById('score-note');
+  if (!inputs.length || !totalEl) return;
+
+  function recompute() {
+    const totalWeight = inputs.reduce((sum, i) => sum + parseFloat(i.dataset.weight), 0);
+    const failed = [];
+    let total = 0;
+
+    inputs.forEach(function (input) {
+      const max = parseFloat(input.dataset.max) || 100;
+      const value = Math.max(0, Math.min(parseFloat(input.value) || 0, max));
+      const percent = (value / max) * 100;
+      const share = totalWeight > 0 ? parseFloat(input.dataset.weight) / totalWeight : 0;
+      total += percent * share;
+
+      const passed = value >= parseFloat(input.dataset.pass);
+      if (input.dataset.required === '1' && !passed) {
+        const row = input.closest('.criterion-row');
+        failed.push(row.querySelector('.detail-value').textContent.replace('*', '').trim());
+      }
+
+      const readout = document.querySelector('.score-readout[data-for="' + input.dataset.criterion + '"]');
+      if (readout) {
+        readout.textContent = value + '/' + max;
+        readout.style.color = passed ? 'var(--emerald-600)' : 'var(--red-600)';
+      }
+    });
+
+    totalEl.textContent = (Math.round(total * 100) / 100) + '%';
+    if (failed.length) {
+      noteEl.textContent = 'Below pass mark on required criteria: ' + failed.join(', ') + '.';
+      noteEl.style.color = 'var(--red-600)';
+    } else {
+      noteEl.textContent = 'All required criteria met.';
+      noteEl.style.color = 'var(--emerald-700)';
+    }
+  }
+
+  inputs.forEach(function (input) { input.addEventListener('input', recompute); });
+  recompute();
+})();
+</script>
+{% endif %}
+{% endblock %}

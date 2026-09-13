@@ -1,0 +1,244 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My research{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My research</h1>
+    <p class="page-description">
+      Every attempt is kept with the feedback it received. A new submission
+      never overwrites an earlier one.
+    </p>
+  </div>
+</div>
+
+{% if not can_submit %}
+  <div class="alert-box alert-info" role="status">
+    Version {{ latest.version }} is with your instructor. You can submit again once it has been reviewed.
+  </div>
+{% endif %}
+
+{% if can_submit and form %}
+  <form method="post" id="research-form">
+    {% csrf_token %}
+    {{ form.competitors }}
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>
+            {% if draft %}Continue your draft
+            {% elif latest %}Submit version {{ latest.version|add:1 }}
+            {% else %}Submit your research{% endif %}
+          </h2>
+          <p>
+            {% if latest and not draft %}
+              Your previous attempt stays on record exactly as it was reviewed.
+            {% else %}
+              Save a draft as often as you like. Nothing reaches your instructor until you submit.
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if form.non_field_errors %}
+          <div class="alert-box alert-error" role="alert">
+            {% for error in form.non_field_errors %}<p class="mb-0">{{ error }}</p>{% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="form-grid">
+          {% for field in form %}
+            {% if field.name != "competitors" %}
+              <div class="field{% if field.field.widget.input_type == None %} span-2{% endif %}">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-2">
+      <div class="card-header">
+        <div>
+          <h2>Competitor channels</h2>
+          <p>
+            Channels that prove the niche works. Leave a figure blank if you could
+            not find it — a blank is treated as "not known", never as a zero.
+          </p>
+        </div>
+        <button type="button" class="btn-secondary btn-sm" id="add-competitor">Add a channel</button>
+      </div>
+      <div class="card-body">
+        <div id="competitor-rows"></div>
+        <p class="muted tiny mb-0" id="competitor-empty">No channels added yet.</p>
+      </div>
+    </div>
+
+    <div class="form-actions mt-2">
+      <button type="submit" name="as_draft" value="1" class="btn-secondary">Save draft</button>
+      <button type="submit" class="btn-primary">Submit for review</button>
+    </div>
+  </form>
+{% endif %}
+
+<div class="card mt-3">
+  <div class="card-header">
+    <div>
+      <h2>My attempts</h2>
+      <p>Newest first. Reviewed attempts are read-only.</p>
+    </div>
+  </div>
+  {% if submissions %}
+    <ul class="list">
+      {% for r in submissions %}
+        <li>
+          <div class="list-row">
+            <div>
+              <p class="detail-value mb-0">
+                Version {{ r.version }}{% if r.topic %} · {{ r.topic }}{% endif %}
+              </p>
+              <p class="tiny muted mb-0">
+                {% if r.submitted_at %}Submitted {{ r.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}
+                {% if r.reviewed_at %} · Reviewed {{ r.reviewed_at|date:"d M Y" }}{% endif %}
+                {% if r.superseded_at %} · Superseded{% endif %}
+              </p>
+            </div>
+            {% submission_badge r.status r.get_status_display %}
+          </div>
+
+          {% comment %}
+            A score is shown only once the attempt has actually been reviewed.
+            An unreviewed attempt has no verdict, and a 0 would read as one.
+          {% endcomment %}
+          {% if r.reviewed_at %}
+            <p class="mt-1 mb-0">Score: <strong>{{ r.score|dash }}%</strong></p>
+            {% if r.feedback %}<p class="mt-1 mb-0">{{ r.feedback }}</p>{% endif %}
+            {% if r.rejection_reason %}
+              <p class="mt-1 mb-0">Reason given: {{ r.rejection_reason }}</p>
+            {% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No attempts yet</p>
+      <p class="empty-description">Your first submission will appear here.</p>
+    </div>
+  {% endif %}
+</div>
+
+{% if can_submit and form %}
+{{ existing_competitors|json_script:"existing-competitors" }}
+<script>
+(function () {
+  "use strict";
+
+  var container = document.getElementById("competitor-rows");
+  var emptyNote = document.getElementById("competitor-empty");
+  var hidden = document.getElementById("{{ form.competitors.id_for_label }}");
+  var form = document.getElementById("research-form");
+
+  // Column key, label, and input type. `oldest_video_at` is a date so the
+  // browser enforces a parseable value; everything else stays free text so a
+  // student can leave it blank rather than being forced to invent a number.
+  var COLUMNS = [
+    ["channel_name", "Channel name", "text"],
+    ["channel_url", "Channel URL", "url"],
+    ["subscriber_count", "Subscribers", "text"],
+    ["view_count", "Total views", "text"],
+    ["video_count", "Videos", "text"],
+    ["oldest_video_at", "Oldest video", "date"],
+    ["video_views_series", "Views per video, oldest first", "text"],
+    ["notes", "Notes", "text"]
+  ];
+
+  function addRow(values) {
+    values = values || {};
+    var row = document.createElement("div");
+    row.className = "card mt-1 competitor-row";
+    row.style.padding = "0.75rem";
+
+    var grid = document.createElement("div");
+    grid.className = "form-grid";
+
+    COLUMNS.forEach(function (col) {
+      var key = col[0], label = col[1], type = col[2];
+      var field = document.createElement("div");
+      field.className = "field";
+
+      var labelEl = document.createElement("label");
+      labelEl.textContent = label;
+
+      var input = document.createElement("input");
+      input.type = type;
+      input.className = "input";
+      input.setAttribute("data-key", key);
+      var existing = values[key];
+      input.value = (existing === null || existing === undefined) ? "" : existing;
+
+      if (key === "video_views_series") {
+        input.placeholder = "5000, 8000, 10000";
+      }
+
+      field.appendChild(labelEl);
+      field.appendChild(input);
+      grid.appendChild(field);
+    });
+
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn-secondary btn-sm mt-1";
+    remove.textContent = "Remove this channel";
+    remove.addEventListener("click", function () {
+      row.remove();
+      refreshEmptyNote();
+    });
+
+    row.appendChild(grid);
+    row.appendChild(remove);
+    container.appendChild(row);
+    refreshEmptyNote();
+  }
+
+  function refreshEmptyNote() {
+    var count = container.querySelectorAll(".competitor-row").length;
+    emptyNote.style.display = count ? "none" : "";
+  }
+
+  function serialise() {
+    var rows = [];
+    container.querySelectorAll(".competitor-row").forEach(function (row) {
+      var data = {};
+      row.querySelectorAll("input[data-key]").forEach(function (input) {
+        data[input.getAttribute("data-key")] = input.value.trim();
+      });
+      // A row with no name or no URL is an abandoned row, not a competitor.
+      // The server discards these too; dropping them here keeps the count the
+      // student sees honest.
+      if (data.channel_name && data.channel_url) {
+        rows.push(data);
+      }
+    });
+    hidden.value = JSON.stringify(rows);
+  }
+
+  document.getElementById("add-competitor").addEventListener("click", function () {
+    addRow({});
+  });
+
+  form.addEventListener("submit", serialise);
+
+  var seed = JSON.parse(document.getElementById("existing-competitors").textContent || "[]");
+  seed.forEach(addRow);
+  refreshEmptyNote();
+})();
+</script>
+{% endif %}
+{% endblock %}

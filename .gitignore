@@ -1,0 +1,34 @@
+# --- Secrets. Never commit these. -------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Virtual environment and local wheel cache ------------------------------
+.venv/
+venv/
+wheels/
+
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Django -----------------------------------------------------------------
+# Local SQLite database used for walkthroughs; production uses PostgreSQL.
+*.sqlite3
+*.sqlite3-journal
+staticfiles/
+media/
+uploads/
+*.log
+
+# --- Editors and OS ---------------------------------------------------------
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

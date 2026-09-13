@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Audit logs · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Audit logs</h1>
+    <p class="page-description">
+      {{ page_obj.paginator.count }} recorded action{{ page_obj.paginator.count|pluralize }}.
+      Entries are never edited or deleted.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  <form class="filter-bar" method="get">
+    <div class="field" style="width:13rem">
+      <label for="action">Action</label>
+      <select id="action" name="action" class="input">
+        <option value="">Any action</option>
+        {% for value, label in actions %}
+          <option value="{{ value }}" {% if selected_action == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="width:13rem">
+      <label for="entity_type">Entity</label>
+      <select id="entity_type" name="entity_type" class="input">
+        <option value="">Any entity</option>
+        {% for entity in entity_types %}
+          <option value="{{ entity }}" {% if selected_entity == entity %}selected{% endif %}>{{ entity }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary">Filter</button>
+  </form>
+
+  {% if page_obj.object_list %}
+    <ul class="list">
+      {% for log in page_obj.object_list %}
+        <li>
+          <div class="list-row">
+            <div style="min-width:0;flex:1">
+              <div class="flex gap-1 items-center flex-wrap">
+                {% audit_badge log.action log.get_action_display %}
+                <strong>{{ log.entity_type }}</strong>
+              </div>
+              {% if log.summary %}<p class="mt-1 mb-0">{{ log.summary }}</p>{% endif %}
+
+              {% if log.changed_fields %}
+                <details class="mt-1">
+                  <summary class="tiny" style="cursor:pointer;color:var(--brand-600)">
+                    {{ log.changed_fields|length }} field{{ log.changed_fields|length|pluralize }} changed
+                  </summary>
+                  <div class="table-scroll mt-1" style="background:var(--slate-50);border-radius:var(--radius);padding:0.75rem">
+                    <table>
+                      <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
+                      <tbody>
+                        {% for field in log.changed_fields %}
+                          <tr>
+                            <td class="mono">{{ field }}</td>
+                            <td class="mono" style="color:var(--red-600)">{{ log.before|get_item:field|dash }}</td>
+                            <td class="mono" style="color:var(--emerald-700)">{{ log.after|get_item:field|dash }}</td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </details>
+              {% endif %}
+            </div>
+            <div class="text-right tiny nowrap">
+              <strong>{{ log.actor.full_name|default:log.actor_email|default:"System" }}</strong><br>
+              {{ log.created_at|date:"d M Y, H:i" }}<br>
+              {% if log.ip_address %}<span class="mono">{{ log.ip_address }}</span>{% endif %}
+            </div>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+      <div class="flex items-center justify-between" style="padding:0.75rem 1rem;border-top:1px solid var(--slate-100)">
+        <p class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
+        <div class="flex gap-1">
+          {% if page_obj.has_previous %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No audit entries</p>
+      <p class="empty-description">Every create, update, approval, export and sign-in will be recorded here.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

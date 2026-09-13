@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Channels · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>YouTube channels</h1>
+    <p class="page-description">
+      {{ channels|length }} channel{{ channels|length|pluralize }} recorded. A student may hold more than one.
+    </p>
+  </div>
+  {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary">Add channel</a>{% endif %}
+</div>
+
+<div class="card">
+  <form class="filter-bar" method="get">
+    <div class="field filter-grow">
+      <label for="search">Search</label>
+      <input id="search" name="search" value="{{ filters.search }}" class="input"
+             placeholder="Channel name, URL, student name or Enrollment ID">
+    </div>
+    <div class="field" style="width:13rem">
+      <label for="status">Status</label>
+      <select id="status" name="status" class="input">
+        <option value="">Any status</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary">Search</button>
+  </form>
+
+  {% if channels %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Channel</th><th>Student</th><th>Niche</th><th>Format</th>
+              <th>Status</th><th>Analytics</th><th>Last upload</th><th class="numeric">Videos</th></tr>
+        </thead>
+        <tbody>
+          {% for c in channels %}
+            <tr>
+              <td>
+                <a href="{{ c.get_absolute_url }}" style="font-weight:500;color:var(--slate-900)">{{ c.channel_name }}</a>
+                {% if c.youtube_channel_id %}
+                  <p class="tiny mono">{{ c.youtube_channel_id }}</p>
+                {% else %}
+                  <p class="tiny">No channel ID recorded</p>
+                {% endif %}
+              </td>
+              <td class="muted">
+                <a href="{{ c.student.get_absolute_url }}">{{ c.student.full_name }}</a>
+                <p class="tiny mono">{{ c.student.enrollment_id }}</p>
+              </td>
+              <td class="muted">{{ c.niche|dash }}</td>
+              <td class="muted">{{ c.get_content_type_display }}</td>
+              <td>{% channel_badge c.status c.get_status_display %}</td>
+              <td>
+                {% comment %}
+                  Says plainly whether private metrics are obtainable, rather
+                  than leaving an empty column to interpret.
+                {% endcomment %}
+                {% if c.has_analytics_access %}{% tone_badge "Connected" "emerald" %}
+                {% elif c.has_public_data %}{% tone_badge "Public only" "slate" %}
+                {% else %}{% tone_badge "Not linked" "amber" %}{% endif %}
+              </td>
+              <td class="muted">{{ c.last_upload_at|date:"d M Y"|default:"—" }}</td>
+              <td class="numeric">{{ c.video_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No channels found</p>
+      <p class="empty-description">
+        Channels can be recorded manually now. From Phase 3 they also sync from the YouTube Data API.
+      </p>
+      {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary mt-2">Add channel</a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

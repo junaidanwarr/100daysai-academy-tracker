@@ -1,0 +1,67 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My assignments{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My assignments</h1>
+    <p class="page-description">
+      Attempts recorded against you from the LMS. Every attempt is kept — a
+      resubmission is a new version, not an edit of the last one.
+    </p>
+  </div>
+</div>
+
+<div class="grid-stats">
+  <div class="stat">
+    <p class="stat-label">Attempts</p>
+    <p class="stat-value">{{ submissions|length }}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Awaiting review</p>
+    <p class="stat-value">{{ awaiting }}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Approved</p>
+    <p class="stat-value">{{ approved }}</p>
+  </div>
+</div>
+
+<div class="card mt-2">
+  <div class="card-header"><div><h2>All attempts</h2></div></div>
+  {% if submissions %}
+    <ul class="list">
+      {% for s in submissions %}
+        <li>
+          <div class="list-row">
+            <div>
+              <p class="detail-value mb-0">{{ s.assignment.title }} · version {{ s.version }}</p>
+              <p class="tiny muted mb-0">
+                {% if s.submitted_at %}Submitted {{ s.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}
+                {% if s.assignment.due_at %} · due {{ s.assignment.due_at|date:"d M Y" }}{% endif %}
+              </p>
+            </div>
+            {% submission_badge s.status s.get_status_display %}
+          </div>
+          {% if s.reviewed_at %}
+            <p class="mt-1 mb-0">
+              Score: <strong>{{ s.score|dash }}</strong>{% if s.assignment.max_score %} / {{ s.assignment.max_score }}{% endif %}
+            </p>
+            {% if s.feedback %}<p class="mt-1 mb-0">{{ s.feedback }}</p>{% endif %}
+            {% if s.rejection_reason %}<p class="mt-1 mb-0">Reason given: {{ s.rejection_reason }}</p>{% endif %}
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No assignment attempts recorded</p>
+      <p class="empty-description">
+        Attempts appear here once your LMS work has been imported. Submit through
+        the LMS as usual — this page is a record, not a submission form.
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

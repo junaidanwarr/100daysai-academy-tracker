@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% load academy_tags humanize %}
+{% block title %}{{ channel.channel_name }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ channel.channel_name }}</h1>
+    <p class="page-description">
+      <a href="{{ channel.student.get_absolute_url }}">{{ channel.student.full_name }}</a>
+      · {{ channel.student.enrollment_id }}
+    </p>
+  </div>
+  <div class="flex items-center gap-1">
+    {% if can_update and channel.youtube_channel_id and sync_configured %}
+      <form method="post" action="{% url 'youtube:channel_sync' channel.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn-secondary">Sync now</button>
+      </form>
+    {% endif %}
+    {% if can_update %}<a href="{% url 'youtube:channel_edit' channel.pk %}" class="btn-secondary">Edit</a>{% endif %}
+  </div>
+</div>
+
+{% if availability.public_reason %}
+  <div class="alert-box alert-warning">{{ availability.public_reason }}</div>
+{% endif %}
+
+<section class="grid grid-stats">
+  <div class="stat">
+    <p class="stat-label">Subscribers</p><p class="stat-value">{{ latest_snapshot.subscriber_count|dash }}</p>
+    {% if latest_snapshot and latest_snapshot.subscriber_count is None %}
+      <p class="stat-hint">This channel hides its subscriber count.</p>
+    {% endif %}
+  </div>
+  <div class="stat"><p class="stat-label">Total views</p><p class="stat-value">{{ latest_snapshot.view_count|dash }}</p></div>
+  <div class="stat"><p class="stat-label">Videos</p><p class="stat-value">{{ latest_snapshot.video_count|dash }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Watch time (minutes)</p>
+    <p class="stat-value">{{ analytics_snapshot.watch_time_minutes|dash }}</p>
+    {% if not availability.private_available %}<p class="stat-hint">Needs the student's authorization</p>{% endif %}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Average view duration</p>
+    <p class="stat-value">{{ analytics_snapshot.average_view_duration|dash }}</p>
+    {% if not availability.private_available %}<p class="stat-hint">Needs the student's authorization</p>{% endif %}
+  </div>
+</section>
+
+<div class="grid grid-3 mt-2">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Channel details</h2></div></div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div><p class="detail-label">Status</p><p class="detail-value">{% channel_badge channel.status channel.get_status_display %}</p></div>
+          <div>
+            <p class="detail-label">Channel URL</p>
+            <p class="detail-value">
+              {% if channel.channel_url %}
+                <a href="{{ channel.channel_url }}" target="_blank" rel="noopener noreferrer">Open on YouTube</a>
+              {% else %}—{% endif %}
+            </p>
+          </div>
+          <div><p class="detail-label">YouTube channel ID</p><p class="detail-value mono">{{ channel.youtube_channel_id|dash }}</p></div>
+          <div><p class="detail-label">Created</p><p class="detail-value">{{ channel.channel_creation_date|date:"d M Y"|default:"—" }}</p></div>
+          <div><p class="detail-label">Niche</p><p class="detail-value">{{ channel.niche|dash }}</p></div>
+          <div><p class="detail-label">Sub-niche</p><p class="detail-value">{{ channel.sub_niche|dash }}</p></div>
+          <div><p class="detail-label">Content type</p><p class="detail-value">{{ channel.get_content_type_display }}</p></div>
+          <div><p class="detail-label">Upload schedule</p><p class="detail-value">{{ channel.upload_schedule|dash }}</p></div>
+          <div><p class="detail-label">Target audience</p><p class="detail-value">{{ channel.target_audience|dash }}</p></div>
+          <div><p class="detail-label">Target country</p><p class="detail-value">{{ channel.target_country|dash }}</p></div>
+          <div><p class="detail-label">Primary language</p><p class="detail-value">{{ channel.primary_language|dash }}</p></div>
+          <div><p class="detail-label">Ownership verified</p><p class="detail-value">{{ channel.ownership_verified|yesno:"Yes,No" }}</p></div>
+          <div><p class="detail-label">Brand Account</p><p class="detail-value">{{ channel.is_brand_account|yesno:"Yes,No" }}</p></div>
+          <div><p class="detail-label">Monetization</p><p class="detail-value">{{ channel.get_monetization_status_display }}</p></div>
+          <div><p class="detail-label">Last upload</p><p class="detail-value">{{ channel.last_upload_at|date:"d M Y"|default:"—" }}</p></div>
+          <div>
+            <p class="detail-label">Last successful sync</p>
+            <p class="detail-value">{{ last_successful_sync.finished_at|date:"d M Y, H:i"|default:"Never" }}</p>
+          </div>
+        </div>
+        {% if channel.notes %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Notes</p><p class="detail-value pre-wrap">{{ channel.notes }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>Growth</h2>
+          <p>Computed by comparing snapshots, so every figure is a real measured difference.</p>
+        </div>
+      </div>
+      <div class="card-body">
+        {% if growth.available %}
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Period</th><th class="numeric">Subscribers</th><th class="numeric">Views</th><th class="numeric">Videos</th><th>Compared with</th></tr></thead>
+              <tbody>
+                {% for period in growth.periods %}
+                  <tr>
+                    <td>{{ period.label }}</td>
+                    {% if period.available %}
+                      <td class="numeric">{{ period.subscribers|dash }}</td>
+                      <td class="numeric">{{ period.views|dash }}</td>
+                      <td class="numeric">{{ period.videos|dash }}</td>
+                      <td class="muted tiny">{{ period.since|date:"d M Y, H:i" }}</td>
+                    {% else %}
+                      <td class="muted tiny" colspan="4">{{ period.reason }}</td>
+                    {% endif %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty">
+            <p class="empty-title">No growth history yet</p>
+            <p class="empty-description">{{ growth.reason }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><h2>Recent sync runs</h2><p>Every attempt, including the ones that failed.</p></div>
+      </div>
+      {% if recent_runs %}
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Started</th><th>Status</th><th>Source</th><th class="numeric">Quota</th><th class="numeric">Items</th><th>Note</th></tr></thead>
+            <tbody>
+              {% for run in recent_runs %}
+                <tr>
+                  <td class="muted">{{ run.started_at|date:"d M Y, H:i" }}</td>
+                  <td>
+                    {% if run.status == "SUCCESS" %}{% tone_badge "Success" "emerald" %}
+                    {% elif run.status == "PARTIAL" %}{% tone_badge "Partial" "amber" %}
+                    {% elif run.status == "FAILED" %}{% tone_badge "Failed" "red" %}
+                    {% else %}{% tone_badge run.get_status_display "slate" %}{% endif %}
+                  </td>
+                  <td class="muted tiny">{{ run.get_source_display|default:"—" }}</td>
+                  <td class="numeric">{{ run.quota_units_used }}</td>
+                  <td class="numeric">{{ run.items_processed }}</td>
+                  <td class="muted tiny">{{ run.error_message|default:"—" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">Never synced</p>
+          <p class="empty-description">
+            {% if not sync_configured %}YOUTUBE_API_KEY is not configured on this deployment.
+            {% elif not channel.youtube_channel_id %}Record the YouTube channel ID to enable synchronisation.
+            {% else %}The scheduled sync has not reached this channel yet.{% endif %}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Analytics access</h2><p>Private metrics need the student's own authorization.</p></div></div>
+      <div class="card-body">
+        {% if availability.private_available %}
+          <p class="detail-value">{% tone_badge "Connected" "emerald" %}</p>
+          <div class="detail-grid mt-1">
+            <div><p class="detail-label">Google account</p><p class="detail-value">{{ availability.connected_email|dash }}</p></div>
+            <div><p class="detail-label">Consented</p><p class="detail-value">{{ availability.consented_at|date:"d M Y" }}</p></div>
+            <div><p class="detail-label">Revenue data</p><p class="detail-value">{{ availability.revenue_authorized|yesno:"Authorized,Not authorized" }}</p></div>
+          </div>
+          {% if can_update %}
+            <form method="post" action="{% url 'youtube:analytics_disconnect' channel.pk %}" class="mt-2">
+              {% csrf_token %}
+              <button type="submit" class="btn-secondary">Disconnect analytics</button>
+              <p class="tiny mt-1">
+                Disconnecting stops new private metrics immediately. Figures already collected are kept
+                as a record of what was true at the time.
+              </p>
+            </form>
+          {% endif %}
+        {% else %}
+          <p class="detail-value">{% tone_badge "Not connected" "amber" %}</p>
+          <p class="tiny mt-1">{{ availability.private_reason }}</p>
+          {% if can_update and oauth_configured and channel.youtube_channel_id %}
+            <a href="{% url 'youtube:analytics_connect' channel.pk %}" class="btn-primary mt-2">Connect analytics</a>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Data availability</h2><p>What this channel can and cannot report.</p></div></div>
+      <div class="card-body">
+        <p class="detail-label">Public API {% if availability.public_available %}· available{% else %}· unavailable{% endif %}</p>
+        <ul class="list" style="margin-top:0.375rem">
+          {% for metric in public_metrics %}
+            <li style="padding:0.125rem 0;border:none">
+              <span class="availability-dot {% if availability.public_available %}on{% endif %}">●</span>
+              <span class="muted">{{ metric }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <p class="detail-label mt-2">Analytics API {% if availability.private_available %}· authorized{% else %}· not authorized{% endif %}</p>
+        <ul class="list" style="margin-top:0.375rem">
+          {% for metric in private_metrics %}
+            <li style="padding:0.125rem 0;border:none">
+              <span class="availability-dot {% if availability.private_available %}on{% endif %}">●</span>
+              <span class="muted">{{ metric }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+
+        {% if not availability.private_available %}
+          <p class="tiny mt-2">
+            These require the student to grant access to their own YouTube Analytics.
+            The academy cannot obtain them any other way.
+          </p>
+        {% endif %}
+        <p class="tiny mt-2">{{ quota_remaining|intcomma }} quota unit(s) left today.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><h2>Recent videos</h2></div>
+        {% if videos %}<a href="{% url 'youtube:video_list' %}?channel={{ channel.pk }}" class="tiny">All videos</a>{% endif %}
+      </div>
+      {% if videos %}
+        <ul class="list">
+          {% for v in videos %}
+            <li>
+              <p class="detail-value"><a href="{% url 'youtube:video_detail' v.pk %}">{{ v.title }}</a></p>
+              <p class="tiny">{{ v.published_at|date:"d M Y"|default:"—" }} · {{ v.get_video_type_display }}</p>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">No videos recorded</p>
+          <p class="empty-description">
+            {% if channel.youtube_channel_id %}Videos appear after the first successful sync.
+            {% else %}Record the YouTube channel ID to sync uploads.{% endif %}
+          </p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

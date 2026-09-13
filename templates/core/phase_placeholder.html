@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="page-description">Scheduled for Phase {{ phase }}.</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:48rem">
+  <div class="card-body">
+    {% comment %}
+      Honest placeholder: states what is not built yet, rather than showing an
+      empty table that reads as "no data".
+    {% endcomment %}
+    <span class="badge badge-amber">Not built yet · Phase {{ phase }}</span>
+
+    <p class="mt-2">{{ summary }}</p>
+
+    <p class="detail-label mt-3">What this section will do</p>
+    <ul class="list" style="margin-top:0.5rem">
+      {% for item in will_include %}
+        <li style="padding:0.25rem 0;border:none">• {{ item }}</li>
+      {% endfor %}
+    </ul>
+
+    <div class="alert-box alert-info mt-3 mb-0">
+      The database tables behind this section already exist, so nothing here requires a schema change —
+      only the interface and the workflow are outstanding.
+    </div>
+  </div>
+</div>
+{% endblock %}

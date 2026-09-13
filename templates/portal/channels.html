@@ -1,0 +1,50 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My channels{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My channels</h1>
+    <p class="page-description">
+      Your channel record is created by your instructor once your research is
+      approved, so this page is read-only. Tell your instructor if anything here
+      is wrong.
+    </p>
+  </div>
+</div>
+
+{% if channels %}
+  <ul class="list card">
+    {% for c in channels %}
+      <li class="list-row">
+        <div>
+          <p class="detail-value mb-0">
+            <a href="{% url 'portal:channel_detail' c.pk %}">{{ c.channel_name }}</a>
+          </p>
+          <p class="tiny muted mb-0">
+            {{ c.niche|default:"No niche recorded" }} · {{ c.get_content_type_display }}
+            {% if c.channel_creation_date %} · created {{ c.channel_creation_date|date:"d M Y" }}{% endif %}
+          </p>
+        </div>
+        {% channel_badge c.status c.get_status_display %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <p class="empty-title">No channels yet</p>
+      <p class="empty-description">
+        {% if research_approved %}
+          Your research is approved. Your instructor will record your channel here
+          once it has been created.
+        {% else %}
+          A channel is recorded after your research is approved. Get your research
+          through review first — see <a href="{% url 'portal:research' %}">My research</a>.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ student.full_name }} ({{ student.enrollment_id }}) · 100DaysAI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ student.full_name }}</h1>
+    <p class="page-description">{{ student.enrollment_id }} · {{ student.batch }}</p>
+  </div>
+  <div class="flex gap-1">
+    {% if can_update %}<a href="{% url 'academy:student_edit' student.pk %}" class="btn-secondary">Edit</a>{% endif %}
+    <a href="{% url 'youtube:channel_create' %}?student={{ student.pk }}" class="btn-primary">Add channel</a>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Roadmap progress</h2><p>{{ student.get_roadmap_stage_display }}</p></div></div>
+      <div class="card-body">
+        <div class="progress-labels"><span>Journey completed</span><span>{{ student.progress_percent }}%</span></div>
+        <div class="progress" role="progressbar" aria-valuenow="{{ student.progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill" style="width: {{ student.progress_percent }}%"></div>
+        </div>
+        <div class="flex flex-wrap gap-1 mt-2">
+          {% student_badge student.status student.get_status_display %}
+          {% if student.is_research_overdue %}{% tone_badge "Research overdue" "red" %}{% endif %}
+          {% if open_alerts %}{% tone_badge open_alerts.count|stringformat:"s"|add:" open alert(s)" "amber" %}{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Profile</h2></div></div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div><p class="detail-label">Enrollment ID</p><p class="detail-value mono">{{ student.enrollment_id }}</p></div>
+          <div><p class="detail-label">Email</p><p class="detail-value">{{ student.email }}</p></div>
+          <div><p class="detail-label">Phone</p><p class="detail-value">{{ student.phone|dash }}</p></div>
+          <div><p class="detail-label">Guardian</p><p class="detail-value">{{ student.guardian_name|dash }}</p></div>
+          <div><p class="detail-label">City</p><p class="detail-value">{{ student.city|dash }}</p></div>
+          <div><p class="detail-label">Country</p><p class="detail-value">{{ student.country|dash }}</p></div>
+          <div><p class="detail-label">Enrolled</p><p class="detail-value">{{ student.enrollment_date|date:"d M Y" }}</p></div>
+          <div><p class="detail-label">Course start</p><p class="detail-value">{{ student.course_start_date|date:"d M Y"|default:"—" }}</p></div>
+          <div><p class="detail-label">Expected completion</p><p class="detail-value">{{ student.expected_completion_date|date:"d M Y"|default:"—" }}</p></div>
+          <div><p class="detail-label">Research start</p><p class="detail-value">{{ student.research_start_date|date:"d M Y"|default:"—" }}</p></div>
+          <div>
+            <p class="detail-label">Research deadline</p>
+            <p class="detail-value" {% if student.is_research_overdue %}style="color:var(--red-600);font-weight:600"{% endif %}>
+              {{ student.research_deadline|date:"d M Y"|default:"—" }}
+            </p>
+          </div>
+          <div><p class="detail-label">Instructor</p><p class="detail-value">{{ student.instructor.full_name|dash }}</p></div>
+          <div><p class="detail-label">LMS student ID</p><p class="detail-value">{{ student.lms_student_id|dash }}</p></div>
+          <div><p class="detail-label">Agreement</p><p class="detail-value">{{ student.get_agreement_status_display }}</p></div>
+          <div><p class="detail-label">Last activity</p><p class="detail-value">{{ student.last_activity_at|date:"d M Y, H:i"|default:"—" }}</p></div>
+        </div>
+        {% if student.notes %}
+          <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+            <p class="detail-label">Notes</p>
+            <p class="detail-value pre-wrap">{{ student.notes }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><h2>YouTube channels</h2><p>{{ channels|length }} recorded. One Enrollment ID may hold several.</p></div>
+      </div>
+      {% if channels %}
+        <ul class="list">
+          {% for c in channels %}
+            <li class="list-row">
+              <div>
+                <a href="{{ c.get_absolute_url }}">{{ c.channel_name }}</a>
+                <p class="tiny">
+                  {{ c.niche|default:"No niche recorded" }} · {{ c.get_content_type_display }} ·
+                  {% if c.last_upload_at %}last upload {{ c.last_upload_at|date:"d M Y" }}{% else %}no uploads recorded{% endif %}
+                </p>
+              </div>
+              {% channel_badge c.status c.get_status_display %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">No channels yet</p>
+          <p class="empty-description">Channels can be recorded once research is approved.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Research submissions</h2><p>Every attempt is kept; nothing is overwritten.</p></div></div>
+      {% if submissions %}
+        <ul class="list">
+          {% for r in submissions %}
+            <li class="list-row">
+              <div>
+                <p style="font-weight:500">Version {{ r.version }}{% if r.topic %} · {{ r.topic }}{% endif %}</p>
+                <p class="tiny">
+                  {% if r.submitted_at %}Submitted {{ r.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}
+                  {% if r.score is not None %} · score {{ r.score }}%{% endif %}
+                </p>
+              </div>
+              {% submission_badge r.status r.get_status_display %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">No submissions yet</p>
+          <p class="empty-description">Research submission and review arrive in Phase 2.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    {% if status_form %}
+      <div class="card">
+        <div class="card-header"><div><h2>Change status</h2></div></div>
+        <div class="card-body">
+          <p class="muted">Current status: <strong>{{ student.get_status_display }}</strong></p>
+          <form method="post" action="{% url 'academy:student_change_status' student.pk %}" class="mt-1">
+            {% csrf_token %}
+            <div class="field">
+              <label for="{{ status_form.to_status.id_for_label }}">New status</label>
+              {{ status_form.to_status }}
+            </div>
+            <div class="field">
+              <label for="{{ status_form.reason.id_for_label }}">Reason</label>
+              {{ status_form.reason }}
+            </div>
+            {% if status_form.override %}
+              <label class="alert-box alert-warning flex gap-1" style="align-items:flex-start">
+                {{ status_form.override }}
+                <span class="tiny" style="color:inherit">
+                  Override the normal progression. Use only to correct a mistake — this is logged as an override.
+                </span>
+              </label>
+            {% endif %}
+            <button type="submit" class="btn-primary" style="width:100%">Update status</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><div><h2>Open alerts</h2></div></div>
+      {% if open_alerts %}
+        <ul class="list">
+          {% for a in open_alerts %}
+            <li>
+              <div class="list-row">
+                <a href="{% url 'monitoring:alert_detail' a.pk %}">{{ a.title }}</a>
+                {% priority_badge a.priority a.get_priority_display %}
+              </div>
+              <p class="tiny mt-1">{{ a.problem }}</p>
+              {% if a.recommended_action %}<p class="tiny" style="color:var(--brand-700)">Suggested: {{ a.recommended_action }}</p>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty"><p class="empty-title">No open alerts</p></div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Timeline</h2><p>Every status change, newest first.</p></div></div>
+      {% if history %}
+        <ol class="list" style="list-style:none">
+          {% for h in history %}
+            <li>
+              <p class="detail-value">
+                {% if h.from_status %}{{ h.get_from_status_display }} → {% endif %}
+                <strong>{{ h.get_to_status_display }}</strong>
+              </p>
+              <p class="tiny">
+                {{ h.created_at|date:"d M Y, H:i" }} ·
+                {% if h.is_automated %}Automated{% else %}{{ h.changed_by.full_name|default:"System" }}{% endif %}
+              </p>
+              {% if h.reason %}<p class="muted mt-1">{{ h.reason }}</p>{% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty"><p class="empty-title">No history yet</p></div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My analytics{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My analytics</h1>
+    <p class="page-description">
+      Subscriber and view figures are public. Watch time, impressions and revenue
+      can only be read with your own consent on the channel — there is no other
+      lawful route to them.
+    </p>
+  </div>
+</div>
+
+{% if rows %}
+  {% for row in rows %}
+    <div class="card {% if not forloop.first %}mt-2{% endif %}">
+      <div class="card-header">
+        <div>
+          <h2><a href="{% url 'portal:channel_detail' row.channel.pk %}">{{ row.channel.channel_name }}</a></h2>
+          <p>
+            {% if row.channel.last_synced_at %}
+              Last synced {{ row.channel.last_synced_at|date:"d M Y, H:i" }}
+            {% else %}
+              Never synced
+            {% endif %}
+          </p>
+        </div>
+        {% channel_badge row.channel.status row.channel.get_status_display %}
+      </div>
+
+      <div class="card-body">
+        <div class="grid-stats">
+          <div class="stat">
+            <p class="stat-label">Subscribers</p>
+            <p class="stat-value">{{ row.public.subscriber_count|dash }}</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Total views</p>
+            <p class="stat-value">{{ row.public.view_count|dash }}</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Videos</p>
+            <p class="stat-value">{{ row.public.video_count|dash }}</p>
+          </div>
+          <div class="stat">
+            <p class="stat-label">Watch time (minutes)</p>
+            <p class="stat-value">{{ row.private.watch_time_minutes|dash }}</p>
+            {% if not row.availability.private_available %}
+              <p class="stat-hint">Needs your consent.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if row.availability.public_reason %}
+          <p class="mt-2 mb-0">Public figures unavailable: {{ row.availability.public_reason }}</p>
+        {% endif %}
+        {% if row.availability.private_reason %}
+          <p class="mt-1 mb-0">Detailed analytics unavailable: {{ row.availability.private_reason }}</p>
+        {% elif row.availability.connected_email %}
+          <p class="mt-2 tiny muted mb-0">
+            Connected as {{ row.availability.connected_email }}
+            {% if row.availability.consented_at %} on {{ row.availability.consented_at|date:"d M Y" }}{% endif %}.
+          </p>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="card">
+    <div class="empty">
+      <p class="empty-title">No channels to report on</p>
+      <p class="empty-description">
+        Analytics appear once your instructor has recorded a channel for you.
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

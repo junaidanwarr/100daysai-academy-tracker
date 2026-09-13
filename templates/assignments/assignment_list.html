@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Assignments · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Assignments</h1>
+    <p class="page-description">
+      Records mirrored from your LMS. Every attempt is kept — an import can never erase feedback
+      already given.
+    </p>
+  </div>
+</div>
+
+<section class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Assignments</p><p class="stat-value">{{ assignments|length }}</p></div>
+  <div class="stat"><p class="stat-label">Attempts recorded</p><p class="stat-value">{{ total_attempts }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Awaiting review</p>
+    <p class="stat-value {% if awaiting %}warning{% endif %}">{{ awaiting }}</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">LMS mode</p>
+    <p class="stat-value" style="font-size:1rem">{{ adapter_label }}</p>
+    <p class="stat-hint">
+      {% if connection.last_sync_at %}Last sync {{ connection.last_sync_at|date:"d M Y, H:i" }}{% else %}Never synced{% endif %}
+    </p>
+  </div>
+</section>
+
+<div class="grid grid-3 mt-2">
+  <div class="span-2 card">
+    <div class="card-header"><div><h2>Recent attempts</h2></div></div>
+
+    <form class="filter-bar" method="get">
+      <div class="field filter-grow">
+        <label for="search">Search</label>
+        <input id="search" name="search" value="{{ filters.search }}" class="input"
+               placeholder="Student, Enrollment ID or assignment title">
+      </div>
+      <button type="submit" class="btn-primary">Search</button>
+    </form>
+
+    {% if submissions %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Assignment</th><th>Attempt</th><th>Status</th><th>Submitted</th><th class="numeric">Score</th></tr>
+          </thead>
+          <tbody>
+            {% for s in submissions %}
+              <tr>
+                <td>
+                  <a href="{{ s.student.get_absolute_url }}" style="font-weight:500;color:var(--slate-900)">{{ s.student.full_name }}</a>
+                  <p class="tiny mono">{{ s.student.enrollment_id }}</p>
+                </td>
+                <td class="muted">
+                  {{ s.assignment.title }}
+                  <p class="tiny">{{ s.assignment.get_type_display }}</p>
+                </td>
+                <td class="muted">v{{ s.version }}</td>
+                <td>{% submission_badge s.status s.get_status_display %}</td>
+                <td class="muted">{{ s.submitted_at|date:"d M Y"|default:"—" }}</td>
+                <td class="numeric">{% if s.score is not None %}{{ s.score }}{% else %}—{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">No attempts recorded</p>
+        <p class="empty-description">
+          Import a CSV export from your LMS, or point its webhook at this system.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="grid" style="gap:1rem">
+    {% if can_import %}
+      <div class="card">
+        <div class="card-header"><div><h2>Import from LMS</h2><p>Paste a CSV export. Re-importing is safe.</p></div></div>
+        <div class="card-body">
+          <form method="post" id="csv-form">
+            {% csrf_token %}
+            <div class="field">
+              <label for="csv_file">CSV file</label>
+              <input id="csv_file" type="file" accept=".csv,text/csv" class="input">
+              <span class="helptext" id="file-note"></span>
+            </div>
+            <div class="field">
+              <label for="csv">Or paste CSV</label>
+              <textarea id="csv" name="csv" rows="5" class="input mono"
+                        placeholder="{{ csv_columns|join:"," }}"></textarea>
+            </div>
+
+            <details class="tiny">
+              <summary style="cursor:pointer;color:var(--brand-600)">Expected columns</summary>
+              <ul style="margin:0.5rem 0 0;padding-left:1rem">
+                {% for column in csv_columns %}
+                  <li>
+                    <code>{{ column }}</code>
+                    {% if column == "assignment_id" %} — required{% endif %}
+                    {% if column == "lms_student_id" or column == "student_email" %} — at least one is required{% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+              <p class="mt-1">
+                Rows are matched to students by LMS id, then by email. Unmatched rows are reported rather
+                than guessed at, and re-importing the same file will not duplicate attempts.
+              </p>
+            </details>
+
+            <button type="submit" class="btn-primary mt-2" style="width:100%">Import</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><div><h2>Webhook</h2><p>For push-based platforms.</p></div></div>
+      <div class="card-body">
+        <p class="tiny"><code>POST /api/webhooks/lms/</code></p>
+        <p class="tiny mt-1">
+          Requires an HMAC-SHA256 signature over the raw body in
+          <code>X-LMS-Signature</code>, verified against <code>LMS_WEBHOOK_SECRET</code>.
+        </p>
+        <div class="mt-1">
+          {% if webhook_configured %}
+            {% tone_badge "Secret configured" "emerald" %}
+          {% else %}
+            {% tone_badge "Secret not set — endpoint refuses all requests" "amber" %}
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Assignments defined</h2></div></div>
+      {% if assignments %}
+        <ul class="list">
+          {% for a in assignments %}
+            <li class="list-row">
+              <div style="min-width:0">
+                <p class="detail-value">{{ a.title }}</p>
+                <p class="tiny">
+                  {{ a.batch.code|default:"All batches" }} · {{ a.get_type_display }}
+                  {% if a.due_at %} · due {{ a.due_at|date:"d M Y" }}{% endif %}
+                </p>
+              </div>
+              <span class="muted">{{ a.submission_count }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">None yet</p>
+          <p class="empty-description">Imports create a shell assignment automatically, which you can rename.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if can_import %}
+<script>
+/* Reads the chosen file into the textarea so the POST stays a plain text
+   submission — no multipart handling needed on the server. */
+(function () {
+  const file = document.getElementById('csv_file');
+  const area = document.getElementById('csv');
+  const note = document.getElementById('file-note');
+  if (!file || !area) return;
+
+  file.addEventListener('change', function () {
+    const chosen = file.files && file.files[0];
+    if (!chosen) return;
+    chosen.text().then(function (text) {
+      area.value = text;
+      note.textContent = 'Loaded ' + chosen.name + ' (' + text.split('\n').length + ' lines).';
+    });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

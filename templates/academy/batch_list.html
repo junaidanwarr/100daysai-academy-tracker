@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Batches · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Batches</h1>
+    <p class="page-description">
+      Academy-wide research window is {{ default_research_days }} days. A batch may override it.
+    </p>
+  </div>
+  {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary">New batch</a>{% endif %}
+</div>
+
+<div class="card">
+  {% if batches %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Code</th><th>Name</th><th>Instructor</th><th>Starts</th><th>Ends</th>
+              <th>Research window</th><th>Status</th><th class="numeric">Students</th></tr>
+        </thead>
+        <tbody>
+          {% for b in batches %}
+            <tr>
+              <td class="mono"><a href="{% url 'academy:batch_detail' b.pk %}">{{ b.code }}</a></td>
+              <td style="font-weight:500;color:var(--slate-900)">{{ b.name }}</td>
+              <td class="muted">{{ b.instructor.full_name|dash }}</td>
+              <td class="muted">{{ b.start_date|date:"d M Y" }}</td>
+              <td class="muted">{{ b.end_date|date:"d M Y"|default:"—" }}</td>
+              <td class="muted">
+                {% if b.research_days %}
+                  <strong style="color:var(--slate-900)">{{ b.research_days }} days (override)</strong>
+                {% else %}
+                  {{ default_research_days }} days (default)
+                {% endif %}
+              </td>
+              <td>{% tone_badge b.get_status_display b.status|lower %}</td>
+              <td class="numeric">{{ b.student_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No batches yet</p>
+      <p class="empty-description">Create a batch before enrolling students — every student must belong to one.</p>
+      {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary mt-2">New batch</a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

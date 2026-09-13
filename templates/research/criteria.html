@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Evaluation criteria · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Research evaluation criteria</h1>
+    <p class="page-description">
+      Criteria are configuration, not code. Weights are normalised across whatever is active, so
+      disabling one re-spreads its weight rather than capping the achievable total.
+    </p>
+  </div>
+  <a href="{% url 'research:submission_list' %}" class="btn-secondary">Back to research</a>
+</div>
+
+{% if not editable %}
+  <div class="alert-box alert-info">You have read-only access to these criteria.</div>
+{% endif %}
+
+<div class="grid" style="gap:1rem;max-width:56rem">
+  {% for group in criteria_sets %}
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h2>{{ group.set.name }} · v{{ group.set.version }}</h2>
+          <p>
+            {{ group.active_count }} active criteria · total weight {{ group.total_weight }}
+            · used by {{ group.set.batches.count }} batch{{ group.set.batches.count|pluralize:"es" }}
+          </p>
+        </div>
+        {% if group.set.is_default %}{% tone_badge "Default" "brand" %}{% endif %}
+      </div>
+
+      <div class="card-body">
+        {% for row in group.criteria %}
+          <div style="border:1px solid var(--slate-200);border-radius:var(--radius);padding:0.75rem;margin-bottom:0.75rem">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="criteria_set" value="{{ group.set.pk }}">
+              <input type="hidden" name="criterion_id" value="{{ row.criterion.pk }}">
+
+              <div class="form-grid">
+                <div class="field" style="grid-column:1/-1">
+                  <label>Criterion name</label>
+                  <input name="name" class="input" value="{{ row.criterion.name }}" {% if not editable %}disabled{% endif %} required>
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Description</label>
+                  <input name="description" class="input" value="{{ row.criterion.description|default:'' }}"
+                         placeholder="What the evaluator is looking for." {% if not editable %}disabled{% endif %}>
+                </div>
+                <div class="field">
+                  <label>Weight</label>
+                  <input name="weightage" type="number" step="0.5" min="0" class="input"
+                         value="{{ row.criterion.weightage }}" {% if not editable %}disabled{% endif %} required>
+                </div>
+                <div class="field">
+                  <label>Max score</label>
+                  <input name="max_score" type="number" min="1" class="input"
+                         value="{{ row.criterion.max_score }}" {% if not editable %}disabled{% endif %} required>
+                </div>
+                <div class="field">
+                  <label>Pass mark</label>
+                  <input name="min_passing_score" type="number" min="0" class="input"
+                         value="{{ row.criterion.min_passing_score }}" {% if not editable %}disabled{% endif %} required>
+                </div>
+                <div class="field">
+                  <label>Display order</label>
+                  <input name="display_order" type="number" min="0" class="input"
+                         value="{{ row.criterion.display_order }}" {% if not editable %}disabled{% endif %}>
+                </div>
+                <div class="field flex flex-wrap gap-2" style="grid-column:1/-1;align-items:center">
+                  <label class="flex items-center gap-1 tiny mb-0">
+                    <input type="checkbox" name="is_required" {% if row.criterion.is_required %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+                    Required — failing it fails the submission
+                  </label>
+                  <label class="flex items-center gap-1 tiny mb-0">
+                    <input type="checkbox" name="evidence_required" {% if row.criterion.evidence_required %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+                    Evidence required
+                  </label>
+                  <label class="flex items-center gap-1 tiny mb-0">
+                    <input type="checkbox" name="is_active" {% if row.criterion.is_active %}checked{% endif %} {% if not editable %}disabled{% endif %}>
+                    Active
+                  </label>
+                </div>
+              </div>
+
+              {% if editable %}<button type="submit" class="btn-primary btn-sm">Save</button>{% endif %}
+            </form>
+
+            {% if editable %}
+              <form method="post" class="mt-1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="retire">
+                <input type="hidden" name="criteria_set" value="{{ group.set.pk }}">
+                <input type="hidden" name="criterion_id" value="{{ row.criterion.pk }}">
+                <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;color:var(--red-600);font-size:0.75rem;text-decoration:underline">
+                  Retire this criterion
+                </button>
+                <span class="tiny">Past scores keep referencing it and stay readable.</span>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+
+        {% if editable %}
+          <details>
+            <summary class="btn-secondary" style="display:inline-block;cursor:pointer">Add criterion</summary>
+            <form method="post" class="mt-2" style="border:1px dashed var(--slate-300);border-radius:var(--radius);padding:0.75rem">
+              {% csrf_token %}
+              <input type="hidden" name="criteria_set" value="{{ group.set.pk }}">
+              <div class="form-grid">
+                <div class="field" style="grid-column:1/-1">
+                  <label>Criterion name</label>
+                  <input name="name" class="input" placeholder="e.g. Thumbnail strategy" required>
+                </div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Description</label>
+                  <input name="description" class="input" placeholder="What the evaluator is looking for.">
+                </div>
+                <div class="field"><label>Weight</label><input name="weightage" type="number" step="0.5" min="0" class="input" value="10" required></div>
+                <div class="field"><label>Max score</label><input name="max_score" type="number" min="1" class="input" value="100" required></div>
+                <div class="field"><label>Pass mark</label><input name="min_passing_score" type="number" min="0" class="input" value="50" required></div>
+                <div class="field"><label>Display order</label><input name="display_order" type="number" min="0" class="input" value="99"></div>
+                <div class="field flex flex-wrap gap-2" style="grid-column:1/-1;align-items:center">
+                  <label class="flex items-center gap-1 tiny mb-0"><input type="checkbox" name="is_required" checked> Required</label>
+                  <label class="flex items-center gap-1 tiny mb-0"><input type="checkbox" name="evidence_required"> Evidence required</label>
+                  <label class="flex items-center gap-1 tiny mb-0"><input type="checkbox" name="is_active" checked> Active</label>
+                </div>
+              </div>
+              <button type="submit" class="btn-primary btn-sm">Add criterion</button>
+            </form>
+          </details>
+        {% endif %}
+      </div>
+    </div>
+  {% empty %}
+    <div class="card">
+      <div class="empty">
+        <p class="empty-title">No criteria sets</p>
+        <p class="empty-description">Run <code>python manage.py seed_demo</code> to create the default set.</p>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Notifications · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div><h1>Notifications</h1></div>
+  <form method="post">{% csrf_token %}
+    <button type="submit" class="btn-secondary">Mark all as read</button>
+  </form>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 card">
+    <div class="card-header"><div><h2>In-app</h2></div></div>
+    {% if notifications %}
+      <ul class="list">
+        {% for n in notifications %}
+          <li {% if not n.read_at %}style="background:var(--brand-50)"{% endif %}>
+            <div class="list-row">
+              <div>
+                {% if n.link_url %}<a href="{{ n.link_url }}" style="font-weight:500">{{ n.title }}</a>
+                {% else %}<p class="detail-value">{{ n.title }}</p>{% endif %}
+                <p class="mt-1 mb-0">{{ n.body }}</p>
+              </div>
+              <div class="text-right nowrap">
+                {% if not n.read_at %}{% tone_badge "New" "brand" %}{% endif %}
+                <p class="tiny mt-1">{{ n.created_at|date:"d M Y, H:i" }}</p>
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">Nothing here yet</p>
+        <p class="empty-description">
+          You will be notified when an alert is assigned to you or one of your students needs attention.
+        </p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Other channels</h2><p>Email, SMS and WhatsApp delivery outcomes.</p></div></div>
+    {% if delivery %}
+      <ul class="list">
+        {% for row in delivery %}
+          <li class="list-row">
+            <div>
+              <p class="detail-value">{{ row.channel|title }}</p>
+              <p class="tiny">{{ row.delivery_status|title }}</p>
+            </div>
+            <strong>{{ row.n }}</strong>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty"><p class="empty-title">No external notifications sent</p></div>
+    {% endif %}
+    <p class="tiny" style="padding:0.75rem 1.25rem;border-top:1px solid var(--slate-100)">
+      "Skipped" means the channel is not configured, or no address is on file — not that delivery failed.
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Research · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Research</h1>
+    <p class="page-description">
+      Every attempt is kept as its own version. Reviewing one never overwrites an earlier one.
+    </p>
+  </div>
+  {% if can_configure %}
+    <a href="{% url 'research:criteria' %}" class="btn-secondary">Evaluation criteria</a>
+  {% endif %}
+</div>
+
+<section class="grid grid-stats">
+  <div class="stat">
+    <p class="stat-label">Awaiting review</p>
+    <p class="stat-value {% if counts.awaiting %}warning{% endif %}">{{ counts.awaiting }}</p>
+  </div>
+  <div class="stat"><p class="stat-label">Approved</p><p class="stat-value success">{{ counts.approved }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Sent back</p>
+    <p class="stat-value {% if counts.returned %}warning{% endif %}">{{ counts.returned }}</p>
+  </div>
+  <div class="stat"><p class="stat-label">In view</p><p class="stat-value">{{ submissions|length }}</p></div>
+</section>
+
+<div class="card mt-2">
+  <form class="filter-bar" method="get">
+    <div class="field filter-grow">
+      <label for="search">Search</label>
+      <input id="search" name="search" value="{{ filters.search }}" class="input"
+             placeholder="Topic, niche, student name or Enrollment ID">
+    </div>
+    <div class="field" style="width:13rem">
+      <label for="status">Status</label>
+      <select id="status" name="status" class="input">
+        <option value="">Awaiting review</option>
+        <option value="ALL" {% if filters.status == "ALL" %}selected{% endif %}>All statuses</option>
+        {% for value, label in statuses %}
+          <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field" style="width:11rem">
+      <label for="batch">Batch</label>
+      <select id="batch" name="batch" class="input">
+        <option value="">All batches</option>
+        {% for b in batches %}
+          <option value="{{ b.pk }}" {% if filters.batch == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.code }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary">Filter</button>
+  </form>
+
+  {% if submissions %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Student</th><th>Batch</th><th>Version</th><th>Topic / niche</th>
+              <th>Status</th><th>Submitted</th><th class="numeric">Score</th><th>Evaluator</th></tr>
+        </thead>
+        <tbody>
+          {% for s in submissions %}
+            <tr>
+              <td>
+                <a href="{% url 'research:submission_detail' s.pk %}" style="font-weight:500;color:var(--slate-900)">
+                  {{ s.student.full_name }}
+                </a>
+                <p class="tiny mono">{{ s.student.enrollment_id }}</p>
+              </td>
+              <td class="muted">{{ s.student.batch.code }}</td>
+              <td class="muted">v{{ s.version }}</td>
+              <td class="muted">
+                {{ s.topic|dash }}{% if s.niche %} <span class="tiny">· {{ s.niche }}</span>{% endif %}
+              </td>
+              <td>{% submission_badge s.status s.get_status_display %}</td>
+              <td class="muted">{{ s.submitted_at|date:"d M Y"|default:"—" }}</td>
+              <td class="numeric">{% if s.score is not None %}{{ s.score }}%{% else %}—{% endif %}</td>
+              <td class="muted">{{ s.evaluator.full_name|dash }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">Nothing in this view</p>
+      <p class="empty-description">
+        Submissions appear here as students send research in.
+        Try "All statuses" to see reviewed attempts.
+      </p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

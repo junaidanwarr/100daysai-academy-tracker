@@ -1,0 +1,71 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}100DaysAI Academy Tracker{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+{% block body %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">100</span>
+      <span>{{ brand_label|default:"Academy Tracker" }}</span>
+    </div>
+    <nav class="sidebar-nav" aria-label="Main">
+      {% for group, items in nav_groups %}
+        <div class="nav-group">
+          <p class="nav-group-label">{{ group }}</p>
+          {% for item in items %}
+            <a class="nav-link {% if item.url_name == active_nav %}active{% endif %}" href="{% url item.url_name %}">
+              <span class="flex items-center gap-1">
+                {{ item.label }}
+                {% comment %}
+                  Say plainly when a section is not built yet, rather than
+                  letting someone click into an empty page.
+                {% endcomment %}
+                {% if not item.delivered %}<span class="phase-tag">P{{ item.phase }}</span>{% endif %}
+              </span>
+              {% if item.url_name == 'monitoring:alert_list' and open_alert_count %}
+                <span class="nav-badge">{{ open_alert_count }}</span>
+              {% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <a href="{% url notifications_url %}" class="btn-secondary btn-sm">
+        Notifications{% if unread_notification_count %} <span class="nav-badge">{{ unread_notification_count }}</span>{% endif %}
+      </a>
+      <div class="topbar-user">
+        <span class="avatar" aria-hidden="true">{{ user.initials }}</span>
+        <div>
+          <div class="user-name">{{ user.full_name }}</div>
+          <div class="user-role">{{ user.get_role_display }}</div>
+        </div>
+      </div>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
+        <button type="submit" class="btn-secondary btn-sm">Sign out</button>
+      </form>
+    </header>
+
+    <main class="content">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert-box alert-{{ message.tags|default:'info' }}" role="status">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endblock %}
+</body>
+</html>

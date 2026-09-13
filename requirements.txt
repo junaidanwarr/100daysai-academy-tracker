@@ -1,0 +1,15 @@
+# 100DaysAI YouTube Academy Tracking System
+Django>=6.0,<7.0
+psycopg[binary]>=3.2
+django-q2>=1.7           # Postgres-backed job queue; no Redis required
+django-htmx>=1.19
+python-dotenv>=1.0
+pyotp>=2.9               # TOTP second factor for administrators
+qrcode>=8.0              # MFA enrolment QR codes
+whitenoise>=6.7          # static files in production
+
+# --- Production WSGI server ------------------------------------------------
+# gunicorn is Linux-only, which covers every managed host and VPS. On Windows
+# use waitress instead:  pip install waitress
+#                        waitress-serve --port=8000 config.wsgi:application
+gunicorn>=23.0; sys_platform != "win32"

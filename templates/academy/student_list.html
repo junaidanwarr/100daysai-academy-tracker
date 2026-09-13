@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Students · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Students</h1>
+    <p class="page-description">
+      {% if active_preset %}{{ active_preset.description }}
+      {% else %}{{ page_obj.paginator.count }} student{{ page_obj.paginator.count|pluralize }} in view.{% endif %}
+    </p>
+  </div>
+  {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary">Enroll student</a>{% endif %}
+</div>
+
+<div class="grid grid-sidebar">
+  <aside class="card" style="padding:0.5rem">
+    <p class="nav-group-label">Saved filters</p>
+    <a class="nav-link {% if not filters.preset %}active{% endif %}" href="{% url 'academy:student_list' %}">All students</a>
+    {% for preset in presets %}
+      <a class="nav-link {% if filters.preset == preset.key %}active{% endif %}"
+         href="{% url 'academy:student_list' %}?preset={{ preset.key }}" title="{{ preset.description }}">
+        <span>{{ preset.label }}</span>
+        <span class="nav-badge" style="background:var(--slate-200);color:var(--slate-700)">
+          {{ preset_counts|get_item:preset.key }}
+        </span>
+      </a>
+    {% endfor %}
+  </aside>
+
+  <div class="card">
+    <form class="filter-bar" method="get">
+      <div class="field filter-grow">
+        <label for="search">Search</label>
+        <input id="search" name="search" value="{{ filters.search }}" class="input"
+               placeholder="Enrollment ID, name, email, phone, channel…">
+      </div>
+      <div class="field" style="width:12rem">
+        <label for="batch">Batch</label>
+        <select id="batch" name="batch" class="input">
+          <option value="">All batches</option>
+          {% for b in batches %}
+            <option value="{{ b.pk }}" {% if filters.batch == b.pk|stringformat:'s' %}selected{% endif %}>{{ b.code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" style="width:13rem">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="input">
+          <option value="">Any status</option>
+          {% for value, label in statuses %}
+            <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if filters.preset %}<input type="hidden" name="preset" value="{{ filters.preset }}">{% endif %}
+      <button type="submit" class="btn-primary">Search</button>
+      {% if filters.search or filters.batch or filters.status or filters.preset %}
+        <a href="{% url 'academy:student_list' %}" class="btn-secondary">Clear</a>
+      {% endif %}
+    </form>
+
+    {% if page_obj.object_list %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Enrollment ID</th><th>Name</th><th>Batch</th><th>Status</th>
+              <th>Stage</th><th>Research due</th><th class="numeric">Channels</th><th class="numeric">Alerts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in page_obj.object_list %}
+              <tr>
+                <td class="mono"><a href="{{ s.get_absolute_url }}">{{ s.enrollment_id }}</a></td>
+                <td>
+                  <a href="{{ s.get_absolute_url }}" style="font-weight:500;color:var(--slate-900)">{{ s.full_name }}</a>
+                  <p class="tiny">{{ s.email }}</p>
+                </td>
+                <td class="muted">{{ s.batch.code }}</td>
+                <td>{% student_badge s.status s.get_status_display %}</td>
+                <td class="muted">{{ s.get_roadmap_stage_display }}</td>
+                <td class="muted {% if s.is_research_overdue %}" style="color:var(--red-600);font-weight:600{% endif %}">
+                  {{ s.research_deadline|date:"d M Y"|default:"—" }}{% if s.is_research_overdue %} · overdue{% endif %}
+                </td>
+                <td class="numeric">{{ s.channel_count }}</td>
+                <td class="numeric">
+                  {% if s.open_alert_count %}<span class="nav-badge">{{ s.open_alert_count }}</span>
+                  {% else %}<span class="tiny">0</span>{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if page_obj.paginator.num_pages > 1 %}
+        <div class="flex items-center justify-between" style="padding:0.75rem 1rem;border-top:1px solid var(--slate-100)">
+          <p class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} total</p>
+          <div class="flex gap-1">
+            {% if page_obj.has_previous %}
+              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+            {% endif %}
+            {% if page_obj.has_next %}
+              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">No students match this view</p>
+        <p class="empty-description">
+          {% if filters.search or filters.preset %}Try clearing the filters or searching for a different term.
+          {% else %}Enroll your first student to start tracking the roadmap.{% endif %}
+        </p>
+        {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary mt-2">Enroll student</a>{% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% load academy_tags humanize %}
+{% block title %}Analytics · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Analytics</h1>
+    <p class="page-description">
+      Synchronisation status for every channel in your scope. Public figures need only a channel ID;
+      private metrics need each student's own authorization.
+    </p>
+  </div>
+</div>
+
+{% if not sync_configured %}
+  <div class="alert-box alert-warning">
+    YOUTUBE_API_KEY is not configured, so no synchronisation is running. Nothing on this page will
+    update until it is set.
+  </div>
+{% elif not oauth_configured %}
+  <div class="alert-box alert-warning">
+    Google OAuth is not configured, so students cannot authorize analytics access. Public figures
+    still sync normally.
+  </div>
+{% endif %}
+
+<section class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Channels</p><p class="stat-value">{{ total }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Linked to YouTube</p><p class="stat-value">{{ linked }}</p>
+    <p class="stat-hint">Have a channel ID recorded</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Analytics authorized</p><p class="stat-value">{{ connected }}</p>
+    <p class="stat-hint">Students who granted consent</p>
+  </div>
+  <div class="stat">
+    <p class="stat-label">Quota used today</p>
+    <p class="stat-value">{{ quota_used|intcomma }}</p>
+    <p class="stat-hint">of {{ quota_ceiling|intcomma }} · {{ quota_remaining|intcomma }} left</p>
+  </div>
+  <div class="stat"><p class="stat-label">Sync cadence</p><p class="stat-value" style="font-size:1.125rem">{{ cadence }}</p></div>
+</section>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div>
+      <h2>Per channel</h2>
+      <p>"Never" is shown as a fact, not left blank for you to infer.</p>
+    </div>
+  </div>
+  {% if rows %}
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Channel</th><th>Student</th><th>Public data</th><th>Analytics</th>
+              <th class="numeric">Subscribers</th><th class="numeric">Watch time</th>
+              <th>Last sync</th><th>Last run</th></tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td><a href="{{ row.channel.get_absolute_url }}" style="font-weight:500;color:var(--slate-900)">{{ row.channel.channel_name }}</a></td>
+              <td class="muted">
+                {{ row.channel.student.full_name }}
+                <p class="tiny mono">{{ row.channel.student.enrollment_id }}</p>
+              </td>
+              <td>
+                {% if row.availability.public_available %}{% tone_badge "Available" "emerald" %}
+                {% else %}{% tone_badge "Unavailable" "amber" %}<p class="tiny">{{ row.availability.public_reason }}</p>{% endif %}
+              </td>
+              <td>
+                {% if row.availability.private_available %}{% tone_badge "Authorized" "emerald" %}
+                {% else %}{% tone_badge "Not authorized" "slate" %}{% endif %}
+              </td>
+              <td class="numeric">{{ row.public.subscriber_count|dash }}</td>
+              <td class="numeric">{{ row.private.watch_time_minutes|dash }}</td>
+              <td class="muted">{{ row.channel.last_synced_at|date:"d M Y, H:i"|default:"Never" }}</td>
+              <td>
+                {% if row.last_run %}
+                  {% if row.last_run.status == "SUCCESS" %}{% tone_badge "Success" "emerald" %}
+                  {% elif row.last_run.status == "PARTIAL" %}{% tone_badge "Partial" "amber" %}
+                  {% elif row.last_run.status == "FAILED" %}{% tone_badge "Failed" "red" %}
+                  {% else %}{% tone_badge row.last_run.get_status_display "slate" %}{% endif %}
+                  {% if row.last_run.error_message %}<p class="tiny">{{ row.last_run.error_message|truncatechars:80 }}</p>{% endif %}
+                {% else %}
+                  <span class="muted tiny">Never run</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No channels in scope</p>
+      <p class="empty-description">Channels appear here once they are recorded against a student.</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div>
+      <h2>Why some columns are empty</h2>
+      <p>The distinction this system refuses to blur.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <p class="muted">
+      Subscribers, views, video counts and upload dates come from the public YouTube Data API and
+      need only a channel ID. These metrics — {{ private_metrics|join:", " }} — belong to the channel
+      owner and are readable only after that student grants access to their own YouTube Analytics.
+    </p>
+    <p class="muted mt-2">
+      An em dash means the figure could not be obtained. A zero means it was measured and is zero.
+      The two are stored differently and are never conflated.
+    </p>
+  </div>
+</div>
+{% endblock %}

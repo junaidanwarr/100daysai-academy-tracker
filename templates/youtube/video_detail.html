@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ video.title }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ video.title }}</h1>
+    <p class="page-description">
+      <a href="{{ channel.get_absolute_url }}">{{ channel.channel_name }}</a>
+      · <a href="{{ channel.student.get_absolute_url }}">{{ channel.student.full_name }}</a>
+      · {{ video.published_at|date:"d M Y"|default:"publish date unknown" }}
+    </p>
+  </div>
+  {% if video.url %}
+    <a href="{{ video.url }}" target="_blank" rel="noopener noreferrer" class="btn-secondary">Watch on YouTube</a>
+  {% endif %}
+</div>
+
+{% if availability.private_reason %}
+  <div class="alert-box alert-warning">{{ availability.private_reason }}</div>
+{% endif %}
+
+<section class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Views</p><p class="stat-value">{{ public_snapshot.views|dash }}</p></div>
+  <div class="stat"><p class="stat-label">Likes</p><p class="stat-value">{{ public_snapshot.likes|dash }}</p></div>
+  <div class="stat"><p class="stat-label">Comments</p><p class="stat-value">{{ public_snapshot.comments|dash }}</p></div>
+  <div class="stat">
+    <p class="stat-label">Impressions</p><p class="stat-value">{{ analytics_snapshot.impressions|dash }}</p>
+    {% if not availability.private_available %}<p class="stat-hint">Needs the student's authorization</p>{% endif %}
+  </div>
+  <div class="stat">
+    <p class="stat-label">Click-through rate</p>
+    <p class="stat-value">{% if analytics_snapshot.impressions_ctr_percent is not None %}{{ analytics_snapshot.impressions_ctr_percent }}%{% else %}—{% endif %}</p>
+    {% if not availability.private_available %}<p class="stat-hint">Needs the student's authorization</p>{% endif %}
+  </div>
+</section>
+
+<div class="grid grid-3 mt-2">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Video details</h2></div></div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div><p class="detail-label">Type</p><p class="detail-value">{{ video.get_video_type_display }}</p></div>
+          <div>
+            <p class="detail-label">Duration</p>
+            <p class="detail-value">{% if video.duration_seconds %}{{ video.duration_seconds }}s{% else %}—{% endif %}</p>
+          </div>
+          <div><p class="detail-label">Published</p><p class="detail-value">{{ video.published_at|date:"d M Y, H:i"|default:"—" }}</p></div>
+          <div><p class="detail-label">YouTube video ID</p><p class="detail-value mono">{{ video.youtube_video_id }}</p></div>
+          <div><p class="detail-label">Public figures captured</p><p class="detail-value">{{ public_snapshot.captured_at|date:"d M Y, H:i"|default:"Never" }}</p></div>
+          <div><p class="detail-label">Analytics captured</p><p class="detail-value">{{ analytics_snapshot.captured_at|date:"d M Y, H:i"|default:"Never" }}</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><h2>Private metrics</h2><p>Written only from the YouTube Analytics API.</p></div>
+      </div>
+      <div class="card-body">
+        {% if analytics_snapshot %}
+          <div class="detail-grid">
+            <div><p class="detail-label">Watch time (minutes)</p><p class="detail-value">{{ analytics_snapshot.watch_time_minutes|dash }}</p></div>
+            <div><p class="detail-label">Average view duration</p><p class="detail-value">{{ analytics_snapshot.average_view_duration|dash }}</p></div>
+            <div><p class="detail-label">Average percentage viewed</p><p class="detail-value">{{ analytics_snapshot.average_percentage_viewed|dash }}</p></div>
+            <div><p class="detail-label">Shares</p><p class="detail-value">{{ analytics_snapshot.shares|dash }}</p></div>
+            <div><p class="detail-label">Subscribers gained</p><p class="detail-value">{{ analytics_snapshot.subscribers_gained|dash }}</p></div>
+            <div><p class="detail-label">Subscribers lost</p><p class="detail-value">{{ analytics_snapshot.subscribers_lost|dash }}</p></div>
+            <div><p class="detail-label">Estimated revenue</p><p class="detail-value">{{ analytics_snapshot.estimated_revenue|dash }}</p></div>
+          </div>
+        {% else %}
+          <div class="empty">
+            <p class="empty-title">No analytics recorded</p>
+            <p class="empty-description">{{ availability.private_reason|default:"These metrics arrive with the next sync." }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div><h2>Audience retention</h2><p>Fetched on request — it costs one Analytics report per video.</p></div>
+        {% if can_fetch_retention and availability.private_available %}
+          <form method="post" action="{% url 'youtube:video_retention' video.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-secondary btn-sm">Fetch retention</button>
+          </form>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {% if retention_points %}
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th class="numeric">Elapsed</th><th class="numeric">Still watching</th><th class="numeric">Versus similar videos</th></tr></thead>
+              <tbody>
+                {% for point in retention_points %}
+                  <tr>
+                    <td class="numeric">{{ point.elapsed_ratio }}</td>
+                    <td class="numeric">{{ point.audience_watch_ratio }}</td>
+                    <td class="numeric">{{ point.relative_retention_performance|dash }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="empty">
+            <p class="empty-title">No retention curve</p>
+            <p class="empty-description">
+              {% if availability.private_available %}Not fetched yet for this video.
+              {% else %}{{ availability.private_reason }}{% endif %}
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Traffic sources</h2><p>Where these views came from.</p></div></div>
+    {% if traffic_sources %}
+      <ul class="list">
+        {% for source in traffic_sources %}
+          <li>
+            <p class="detail-value">{{ source.source_type }}</p>
+            <p class="tiny">{{ source.views }} view{{ source.views|pluralize }}
+              {% if source.share_percent is not None %}· {{ source.share_percent }}%{% endif %}</p>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">Not available</p>
+        <p class="empty-description">
+          {{ availability.private_reason|default:"No traffic source breakdown has been synced for this video yet." }}
+        </p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
