@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.academy.models import Batch, Student, StudentDocument, StudentStatusHistory
+from apps.academy.models import Batch, Student, StudentActivity, StudentDocument, StudentStatusHistory
 
 
 class StudentStatusHistoryInline(admin.TabularInline):
@@ -69,4 +69,24 @@ class StudentStatusHistoryAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(StudentActivity)
+class StudentActivityAdmin(admin.ModelAdmin):
+    """Read-only: the log records what happened, so it is never edited here."""
+
+    list_display = ["occurred_at", "student", "kind", "summary", "actor", "is_student_action"]
+    list_filter = ["kind", "is_student_action"]
+    search_fields = ["student__full_name", "student__enrollment_id", "summary"]
+    date_hierarchy = "occurred_at"
+    list_select_related = ["student", "actor"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False

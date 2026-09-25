@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{% if is_edit %}Edit {{ assignment.title }}{% else %}New assignment{% endif %} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{% if is_edit %}Edit assignment{% else %}New assignment{% endif %}</h1>
+    <p class="page-description">
+      {% if is_edit %}
+        Changes apply from now on. Attempts already handed in and their reviews are never altered.
+      {% else %}
+        Students in the chosen batch see this in their portal and can hand work in straight away.
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<form method="post" style="max-width:44rem">
+  {% csrf_token %}
+  <div class="card">
+    <div class="card-body">{% include "_form.html" with wide_fields="description title" %}</div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">{% if is_edit %}Save changes{% else %}Set assignment{% endif %}</button>
+    <a href="{% if is_edit %}{{ assignment.get_absolute_url }}{% else %}{% url 'assignments:assignment_list' %}{% endif %}" class="btn-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

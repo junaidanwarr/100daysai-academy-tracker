@@ -97,6 +97,13 @@ def attempt_login(request, email: str, password: str) -> LoginResult:
         **meta,
     )
 
+    student = getattr(user, "student_profile", None)
+    if student and not student.deleted_at:
+        from apps.academy.activity import record_activity
+        from apps.core.enums import ActivityKind
+
+        record_activity(student, ActivityKind.LOGIN, "Signed in to the portal", actor=user)
+
     return LoginResult(ok=True, needs_mfa=needs_mfa, user=user)
 
 

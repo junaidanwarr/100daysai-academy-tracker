@@ -112,8 +112,48 @@
       {% else %}
         <div class="empty">
           <p class="empty-title">No submissions yet</p>
-          <p class="empty-description">Research submission and review arrive in Phase 2.</p>
+          <p class="empty-description">The student submits research from their portal.</p>
         </div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Assignments</h2><p>Every attempt, from the portal or the LMS.</p></div></div>
+      {% if assignment_attempts %}
+        <ul class="list">
+          {% for s in assignment_attempts %}
+            <li class="list-row">
+              <div>
+                <a href="{{ s.get_absolute_url }}" style="font-weight:500">{{ s.assignment.title }} · attempt {{ s.version }}</a>
+                <p class="tiny">
+                  {% if s.submitted_at %}Handed in {{ s.submitted_at|date:"d M Y" }}{% else %}Not handed in{% endif %}
+                  {% if s.is_late %} · <span style="color:var(--red-600)">late</span>{% endif %}
+                  {% if s.score is not None %} · score {{ s.score }}{% if s.assignment.max_score is not None %}/{{ s.assignment.max_score }}{% endif %}{% endif %}
+                </p>
+              </div>
+              {% submission_badge s.status s.get_status_display %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty">
+          <p class="empty-title">No assignment attempts</p>
+          <p class="empty-description">Attempts appear here when handed in through the portal or imported from the LMS.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card" id="activity">
+      <div class="card-header">
+        <div><h2>Activity</h2><p>{{ activity_count }} entr{{ activity_count|pluralize:"y,ies" }} · newest first</p></div>
+        {% if activity_count %}<a href="{% url 'academy:activity_feed' %}?student={{ student.pk }}" class="btn-secondary btn-sm">Full log</a>{% endif %}
+      </div>
+      {% if activities %}
+        <ol class="list" style="list-style:none">
+          {% for a in activities %}{% include "academy/_activity_item.html" with a=a link=True %}{% endfor %}
+        </ol>
+      {% else %}
+        <div class="empty"><p class="empty-title">No activity recorded yet</p></div>
       {% endif %}
     </div>
   </div>
@@ -148,6 +188,26 @@
       </div>
     {% endif %}
 
+    {% if activity_form %}
+      <div class="card">
+        <div class="card-header"><div><h2>Log activity</h2><p>Attendance, mentoring, contact or a note.</p></div></div>
+        <div class="card-body">
+          <form method="post" action="{% url 'academy:student_log_activity' student.pk %}">
+            {% csrf_token %}
+            {% for field in activity_form %}
+              <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+              </div>
+            {% endfor %}
+            <p class="tiny">Staff notes are never shown to the student.</p>
+            <button type="submit" class="btn-primary" style="width:100%">Log it</button>
+          </form>
+        </div>
+      </div>
+    {% endif %}
+
     <div class="card">
       <div class="card-header"><div><h2>Open alerts</h2></div></div>
       {% if open_alerts %}
@@ -169,7 +229,7 @@
     </div>
 
     <div class="card">
-      <div class="card-header"><div><h2>Timeline</h2><p>Every status change, newest first.</p></div></div>
+      <div class="card-header"><div><h2>Status timeline</h2><p>Every status change, newest first.</p></div></div>
       {% if history %}
         <ol class="list" style="list-style:none">
           {% for h in history %}

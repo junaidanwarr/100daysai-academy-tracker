@@ -19,6 +19,7 @@ PORTAL_NAV_ITEMS: list[NavItem] = [
     NavItem("My roadmap", "portal:overview", "student", 1, "My progress"),
     NavItem("My research", "portal:research", "research", 2, "My progress"),
     NavItem("My assignments", "portal:assignments", "assignment", 2, "My progress"),
+    NavItem("My activity", "portal:activity", "student", 1, "My progress"),
     NavItem("My channels", "portal:channels", "channel", 1, "My channel"),
     NavItem("My videos", "portal:videos", "video", 3, "My channel"),
     NavItem("My analytics", "portal:analytics", "analytics", 3, "My channel"),

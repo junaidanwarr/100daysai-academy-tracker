@@ -127,6 +127,38 @@ instructor still reaches the whole console and is bounced out of `/portal/`.
 
 ---
 
+## Phase 3.6 — Activity tracking and in-app assignments · **delivered**
+
+- `StudentActivity`: an append-only log written by each action — sign-in,
+  research and assignment submissions and reviews, status changes, channels,
+  analytics connections, published videos — plus staff-logged attendance,
+  mentoring, contact and notes
+- `/activity/` cohort feed (batch, kind, who, window filters) with a summary of
+  what happened, the most active students and the quiet ones; the full log per
+  student; `/portal/activity/` for the student's own log without staff notes
+- Only a student's own actions move `last_activity_at`. Previously every status
+  change reset it, so a staff correction hid genuine inactivity from the
+  inactivity alert
+- Assignments set in-app: create and edit, per-batch scoping for instructors,
+  due date, maximum score, open/closed
+- Portal hand-in with text and link, resubmission as version N+1, late work
+  marked late
+- Staff review with score, feedback and a required reason when sending work back
+- Per-assignment roster including students with nothing handed in; overdue
+  assignments raise the new `ASSIGNMENT_OVERDUE` alert
+- `backfill_activity` rebuilds the log from existing records with their real
+  timestamps; idempotent
+- Fixed: every student sign-in raised a 500, because the post-login redirect
+  still pointed at the `academy:portal` route removed in Phase 3.5
+- Fixed: portal stat tiles stacked vertically (missing `grid` class)
+
+**Verified:** 245 tests pass. Seeded SQLite, then drove it in a browser as an
+instructor (feed, roster, review, create assignment, log a mentoring session),
+a student (hand in, see own log without staff notes, bounced from `/activity/`)
+and an admin — no errors in the server log.
+
+---
+
 ## Phase 4 — Performance and reporting
 
 - Weighted scoring across all specification section 11 factors

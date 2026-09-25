@@ -61,16 +61,17 @@
   </div>
 </div>
 
-<div class="grid-stats mt-2">
+<div class="grid grid-stats mt-2">
   <div class="stat">
     <p class="stat-label">Research attempts</p>
     <p class="stat-value">{{ submission_count }}</p>
     <p class="stat-hint">Every attempt is kept, with its feedback.</p>
   </div>
   <div class="stat">
-    <p class="stat-label">Assignment attempts</p>
-    <p class="stat-value">{{ assignment_count }}</p>
+    <p class="stat-label">Assignments to hand in</p>
+    <p class="stat-value {% if assignments_overdue %}warning{% endif %}"><a href="{% url 'portal:assignments' %}" style="color:inherit">{{ assignments_to_do }}</a></p>
     <p class="stat-hint">
+      {% if assignments_overdue %}{{ assignments_overdue }} overdue. {% endif %}
       {% if assignments_awaiting %}{{ assignments_awaiting }} awaiting review.{% else %}None awaiting review.{% endif %}
     </p>
   </div>
@@ -112,6 +113,20 @@
         <a href="{% url 'portal:research' %}">Start your research submission</a> when you are ready.
       </p>
     </div>
+  {% endif %}
+</div>
+
+<div class="card mt-2">
+  <div class="card-header">
+    <div><h2>Recent activity</h2></div>
+    <a href="{% url 'portal:activity' %}" class="btn-secondary btn-sm">See everything</a>
+  </div>
+  {% if recent_activity %}
+    <ol class="list" style="list-style:none">
+      {% for a in recent_activity %}{% include "academy/_activity_item.html" with a=a portal=True %}{% endfor %}
+    </ol>
+  {% else %}
+    <div class="empty"><p class="empty-title">Nothing recorded yet</p></div>
   {% endif %}
 </div>
 

@@ -38,7 +38,7 @@ def dashboard(request):
     """Administration dashboard aggregates (specification section 13)."""
     actor = request.user
     if actor.role == UserRole.STUDENT:
-        return redirect("academy:portal")
+        return redirect("portal:overview")
 
     today = timezone.localdate()
     now = timezone.now()

@@ -12,11 +12,15 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
+from apps.academy.activity import record_activity
+from apps.academy.backfill import backfill_activity
 from apps.academy.models import Batch, Student, StudentStatusHistory
 from apps.academy.status import STATUS_TO_STAGE
 from apps.accounts.models import User
 from apps.core.crypto import generate_password
 from apps.core.enums import (
+    ActivityKind,
+    AssignmentType,
     ChannelStatus,
     ContentType,
     MonetizationStatus,
@@ -27,6 +31,7 @@ from apps.core.enums import (
 )
 from apps.core.models import SystemSetting
 from apps.monitoring.models import AlertRule, ScoringFactor
+from apps.assignments.models import Assignment, AssignmentSubmission
 from apps.research.models import ResearchCriteriaSet, ResearchCriterion, ResearchSubmission
 from apps.youtube.models import YoutubeChannel
 
@@ -63,6 +68,7 @@ ALERT_RULES = [
     ("student_inactive", "Student inactive", "STUDENT_INACTIVE", {}, "MEDIUM", ["IN_APP", "EMAIL"], 72, "Reach out directly and record the response."),
     ("analytics_disconnected", "YouTube Analytics disconnected", "ANALYTICS_DISCONNECTED", {}, "LOW", ["IN_APP"], 168, "Ask the student to reconnect their Google account."),
     ("agreement_unsigned", "Final agreement not signed", "AGREEMENT_UNSIGNED", {"after_days": 7}, "MEDIUM", ["IN_APP", "EMAIL"], 168, "Remind the student to review and sign their completion record."),
+    ("assignment_overdue", "Assignment overdue", "ASSIGNMENT_OVERDUE", {"grace_days": 0}, "HIGH", ["IN_APP", "EMAIL"], 24, "Check the student has seen the assignment and agree when it will be handed in."),
 ]
 
 SCORING_FACTORS = [
@@ -156,6 +162,105 @@ APPROVED_STATUSES = {
     StudentStatus.ACTIVE, StudentStatus.INACTIVE, StudentStatus.AT_RISK,
     StudentStatus.BATCH_COMPLETED,
 }
+
+
+# (title, type, batch index or None for all, due offset days, max score, instructions)
+ASSIGNMENTS = [
+    ("Channel branding kit", AssignmentType.PROJECT, 0, -2, 20,
+     "Channel name shortlist, logo, banner and a one-paragraph channel description. Link a Drive folder."),
+    ("First three scripts", AssignmentType.PROJECT, 0, 5, 30,
+     "Write scripts for your first three videos, each with a hook, three beats and a call to action."),
+    ("Thumbnail A/B pair", AssignmentType.VIDEO_SUBMISSION, 1, -3, 10,
+     "Two thumbnail variants for the same video, with a sentence on what each is testing."),
+    ("Weekly reflection", AssignmentType.OTHER, None, 2, None,
+     "What did you publish, what did you learn, and what is blocking you? Five sentences is plenty."),
+]
+
+
+def _seed_assignments(batches, instructors, now):
+    """Assignments with a spread of attempts: approved, sent back, awaiting, late and missing."""
+    assignments = []
+    for title, kind, batch_index, due_offset, max_score, description in ASSIGNMENTS:
+        assignments.append(Assignment.objects.create(
+            title=title, type=kind, batch=batches[batch_index] if batch_index is not None else None,
+            due_at=now + timedelta(days=due_offset), max_score=max_score, description=description,
+        ))
+    branding, scripts, thumbnails, reflection = assignments
+
+    # Only students who are engaged get attempts, and each attempt predates
+    # their last recorded activity so the seed tells one consistent story.
+    engaged = list(
+        Student.objects.filter(last_activity_at__gte=now - timedelta(days=7))
+        .exclude(status__in=[StudentStatus.ENROLLED, StudentStatus.RESEARCH_PENDING])
+        .order_by("enrollment_id")
+    )
+    written = 0
+    for index, student in enumerate(engaged):
+        instructor = instructors[0] if student.batch_id == batches[0].pk else instructors[1]
+        handed_in = student.last_activity_at - timedelta(hours=6)
+        link = f"https://drive.google.com/drive/folders/demo-{student.enrollment_id.lower()}"
+
+        work = branding if student.batch_id == batches[0].pk else thumbnails
+        if index % 4 == 3:
+            continue  # nothing handed in: shows up as overdue on the roster
+        if index % 4 == 2:
+            # Sent back once, resubmitted, now awaiting review.
+            AssignmentSubmission.objects.create(
+                assignment=work, student=student, version=1, status=SubmissionStatus.REVISION_REQUESTED,
+                submitted_at=handed_in - timedelta(days=4), reviewed_at=handed_in - timedelta(days=3),
+                evaluator=instructor, score=4 if work.max_score == 10 else 8,
+                submission_url=link, superseded_at=handed_in,
+                rejection_reason="The brief asks for every element; the banner is missing.",
+                feedback="Good start — the name shortlist is strong.",
+            )
+            AssignmentSubmission.objects.create(
+                assignment=work, student=student, version=2, status=SubmissionStatus.RESUBMITTED,
+                submitted_at=handed_in, submission_url=link,
+                response_text="Added the banner and tightened the description.",
+            )
+        elif index % 4 == 1:
+            AssignmentSubmission.objects.create(
+                assignment=work, student=student, version=1, status=SubmissionStatus.SUBMITTED,
+                submitted_at=handed_in, submission_url=link,
+            )
+        else:
+            AssignmentSubmission.objects.create(
+                assignment=work, student=student, version=1, status=SubmissionStatus.APPROVED,
+                submitted_at=handed_in - timedelta(days=2), reviewed_at=handed_in - timedelta(days=1),
+                approved_at=handed_in - timedelta(days=1), evaluator=instructor,
+                score=(work.max_score or 10) - (index % 3), submission_url=link,
+                feedback="Clear and complete. Carry this consistency into the scripts.",
+            )
+        written += 1 + (index % 4 == 2)
+
+        if index % 3 == 0:
+            AssignmentSubmission.objects.create(
+                assignment=reflection, student=student, version=1, status=SubmissionStatus.SUBMITTED,
+                submitted_at=handed_in + timedelta(hours=2),
+                response_text="Published two Shorts, learned that the first second decides retention. "
+                              "Blocked on voiceover quality.",
+            )
+            written += 1
+    return len(assignments), written
+
+
+def _seed_attendance(instructors, now):
+    """Two live classes: most engaged students attended, a few did not."""
+    count = 0
+    for days_ago, topic in [(8, "Hooks and retention"), (1, "Thumbnails that earn the click")]:
+        held = now - timedelta(days=days_ago)
+        for student in Student.objects.tracked().order_by("enrollment_id"):
+            attended = student.last_activity_at and student.last_activity_at >= held - timedelta(days=1)
+            record_activity(
+                student,
+                ActivityKind.CLASS_ATTENDED if attended else ActivityKind.CLASS_MISSED,
+                f"Live class: {topic}",
+                actor=student.instructor or instructors[0],
+                occurred_at=held,
+                metadata={"manual": True},
+            )
+            count += 1
+    return count
 
 
 class Command(BaseCommand):
@@ -324,6 +429,16 @@ class Command(BaseCommand):
                     )
 
             self.stdout.write(f"  ok  {len(STUDENTS)} students with submissions and channels")
+
+        if Assignment.objects.exists():
+            self.stdout.write(f"  --  {Assignment.objects.count()} assignments already present, skipping")
+        else:
+            set_count, attempt_count = _seed_assignments([batch1, batch2], [instructor1, instructor2], now)
+            self.stdout.write(f"  ok  {set_count} assignments with {attempt_count} attempts")
+            self.stdout.write(f"  ok  {_seed_attendance([instructor1, instructor2], now)} class attendance entries")
+
+        written = backfill_activity()
+        self.stdout.write(f"  ok  {sum(written.values())} activity-log entries from existing records")
 
         self.stdout.write("\nSeed complete.\n")
 

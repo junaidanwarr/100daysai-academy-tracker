@@ -1,0 +1,36 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}My activity{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>My activity</h1>
+    <p class="page-description">
+      Everything you have done here, and every decision made on your work, newest first.
+    </p>
+  </div>
+</div>
+
+<div class="card">
+  {% if page_obj.object_list %}
+    <ol class="list" style="list-style:none">
+      {% for a in page_obj %}{% include "academy/_activity_item.html" with a=a portal=True %}{% endfor %}
+    </ol>
+    {% if page_obj.has_other_pages %}
+      <div class="flex gap-1 justify-between items-center card-body">
+        <span class="tiny">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <div class="flex gap-1">
+          {% if page_obj.has_previous %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.previous_page_number }}">Newer</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.next_page_number }}">Older</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">Nothing yet</p>
+      <p class="empty-description">Submitting research, handing in assignments and publishing videos all show up here.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

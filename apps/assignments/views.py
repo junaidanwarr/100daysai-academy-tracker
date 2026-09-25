@@ -5,16 +5,26 @@ from apps.core.access import staff_console
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.assignments.forms import AssignmentForm, ReviewAssignmentForm
 from apps.assignments.lms import CSV_COLUMNS, get_adapter, parse_csv, webhook_adapter
-from apps.assignments.models import Assignment, LmsConnection
-from apps.assignments.services import ingest_submissions, scoped_submissions
+from apps.assignments.models import Assignment, AssignmentSubmission, LmsConnection
+from apps.assignments.services import (
+    AssignmentStateError,
+    assignment_roster,
+    batches_for_actor,
+    ingest_submissions,
+    review_assignment,
+    save_assignment,
+    scoped_assignments,
+    scoped_submissions,
+)
 from apps.core.context import system_actor
 from apps.core.enums import LmsProvider, SubmissionStatus
-from apps.core.permissions import can
+from apps.core.permissions import SCOPE_ALL, can, scope_for
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +71,11 @@ def assignment_list(request):
         return redirect("assignments:assignment_list")
 
     submissions = scoped_submissions(actor)
+    status = request.GET.get("status")
+    if status == "awaiting":
+        submissions = submissions.filter(status__in=AWAITING)
+    elif status:
+        submissions = submissions.filter(status=status)
     search = request.GET.get("search")
     if search:
         submissions = submissions.filter(
@@ -77,7 +92,7 @@ def assignment_list(request):
         "assignments/assignment_list.html",
         {
             "submissions": submissions[:100],
-            "assignments": Assignment.objects.annotate(submission_count=Count("submissions")),
+            "assignments": scoped_assignments(actor).annotate(submission_count=Count("submissions")),
             "total_attempts": scoped_submissions(actor).count(),
             "awaiting": scoped_submissions(actor).filter(status__in=AWAITING).count(),
             "adapter_label": adapter.label,
@@ -85,8 +100,138 @@ def assignment_list(request):
             "csv_columns": CSV_COLUMNS,
             "webhook_configured": webhook_adapter.is_configured(),
             "can_import": can_import,
-            "filters": {"search": search or ""},
+            "can_create": can(actor.role, "assignment", "create"),
+            "statuses": SubmissionStatus.choices,
+            "filters": {"search": search or "", "status": status or ""},
         },
+    )
+
+
+def _assignment_form(actor, data=None, instance=None):
+    return AssignmentForm(
+        data,
+        instance=instance,
+        batches=batches_for_actor(actor),
+        allow_all_batches=scope_for(actor.role, "assignment") == SCOPE_ALL,
+    )
+
+
+@staff_console
+@require_http_methods(["GET", "POST"])
+def assignment_create(request):
+    actor = request.user
+    if not can(actor.role, "assignment", "create"):
+        raise PermissionDenied("Your role may not set assignments.")
+
+    form = _assignment_form(actor, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            assignment = save_assignment(actor, form.cleaned_data)
+            messages.success(request, f'Set "{assignment.title}".')
+            return redirect(assignment.get_absolute_url())
+        except AssignmentStateError as exc:
+            form.add_error(None, str(exc))
+
+    return render(request, "assignments/assignment_form.html", {"form": form, "is_edit": False})
+
+
+@staff_console
+@require_http_methods(["GET", "POST"])
+def assignment_edit(request, pk):
+    actor = request.user
+    if not can(actor.role, "assignment", "update"):
+        raise PermissionDenied("Your role may not edit assignments.")
+
+    assignment = get_object_or_404(scoped_assignments(actor), pk=pk)
+    form = _assignment_form(actor, request.POST or None, instance=assignment)
+    if request.method == "POST" and form.is_valid():
+        try:
+            save_assignment(actor, form.cleaned_data, assignment=assignment)
+            messages.success(request, "Assignment updated.")
+            return redirect(assignment.get_absolute_url())
+        except AssignmentStateError as exc:
+            form.add_error(None, str(exc))
+
+    return render(
+        request, "assignments/assignment_form.html", {"form": form, "is_edit": True, "assignment": assignment}
+    )
+
+
+@staff_console
+def assignment_detail(request, pk):
+    """The roster: every student the work is set for, including those with nothing in."""
+    actor = request.user
+    if not can(actor.role, "assignment", "read"):
+        raise PermissionDenied("Your role may not view assignments.")
+
+    assignment = get_object_or_404(scoped_assignments(actor), pk=pk)
+    rows, counts = assignment_roster(actor, assignment)
+
+    state = request.GET.get("state")
+    if state:
+        rows = [r for r in rows if r.state == state]
+
+    return render(
+        request,
+        "assignments/assignment_detail.html",
+        {
+            "assignment": assignment,
+            "rows": rows,
+            "counts": counts,
+            "state": state or "",
+            "can_edit": can(actor.role, "assignment", "update"),
+            "can_review": can(actor.role, "assignment", "review"),
+        },
+    )
+
+
+@staff_console
+@require_http_methods(["GET", "POST"])
+def submission_detail(request, pk):
+    actor = request.user
+    if not can(actor.role, "assignment", "read"):
+        raise PermissionDenied("Your role may not view assignments.")
+
+    submission = get_object_or_404(scoped_submissions(actor), pk=pk)
+    may_review = (
+        can(actor.role, "assignment", "review")
+        and not submission.is_closed
+        and not submission.superseded_at
+    )
+    form = (
+        ReviewAssignmentForm(request.POST or None, max_score=submission.assignment.max_score)
+        if may_review
+        else None
+    )
+
+    if request.method == "POST":
+        if not may_review:
+            raise PermissionDenied("This attempt cannot be reviewed.")
+        if form.is_valid():
+            try:
+                review_assignment(
+                    actor,
+                    submission,
+                    decision=form.cleaned_data["decision"],
+                    score=form.cleaned_data.get("score"),
+                    feedback=form.cleaned_data.get("feedback") or None,
+                    rejection_reason=form.cleaned_data.get("rejection_reason") or None,
+                )
+                messages.success(request, "Review recorded.")
+                return redirect(submission.get_absolute_url())
+            except AssignmentStateError as exc:
+                form.add_error(None, str(exc))
+
+    history = (
+        AssignmentSubmission.objects.filter(assignment=submission.assignment, student=submission.student)
+        .select_related("evaluator")
+        .order_by("-version")
+    )
+
+    return render(
+        request,
+        "assignments/submission_detail.html",
+        {"submission": submission, "form": form, "history": history, "may_review": may_review},
     )
 
 

@@ -13,12 +13,13 @@ from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
+from apps.academy.activity import record_activity
 from apps.academy.enrollment_id import next_enrollment_id
 from apps.academy.filters import PresetContext, STUDENT_PRESETS, get_preset
 from apps.academy.models import Batch, Student, StudentStatusHistory
 from apps.academy.status import STATUS_TO_STAGE, assert_transition
 from apps.core.audit import diff_fields, snapshot, write_audit
-from apps.core.enums import AuditAction, StudentStatus
+from apps.core.enums import ActivityKind, AuditAction, StudentStatus
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import assert_can
 from apps.core.settings_service import ENROLLMENT_ID_PREFIX, effective_research_days, get_setting
@@ -90,7 +91,7 @@ def create_student(actor, data: dict) -> Student:
         last_activity_at=timezone.now(),
     )
 
-    StudentStatusHistory.objects.create(
+    history = StudentStatusHistory.objects.create(
         student=student,
         from_status=None,
         to_status=student.status,
@@ -169,10 +170,9 @@ def change_status(
 
     student.status = to_status
     student.roadmap_stage = to_stage
-    student.last_activity_at = timezone.now()
-    student.save(update_fields=["status", "roadmap_stage", "last_activity_at", "updated_at"])
+    student.save(update_fields=["status", "roadmap_stage", "updated_at"])
 
-    StudentStatusHistory.objects.create(
+    history = StudentStatusHistory.objects.create(
         student=student,
         from_status=from_status,
         to_status=to_status,
@@ -181,6 +181,18 @@ def change_status(
         reason=reason,
         changed_by=actor if getattr(actor, "pk", None) else None,
         is_automated=not getattr(actor, "pk", None),
+    )
+
+    labels = dict(StudentStatus.choices)
+    record_activity(
+        student,
+        ActivityKind.STATUS_CHANGED,
+        f"Status changed from {labels.get(from_status, from_status)} to {labels.get(to_status, to_status)}"
+        + (" (override)" if override else ""),
+        actor=actor,
+        detail=reason,
+        target=history,
+        metadata={"from": from_status, "to": to_status},
     )
 
     write_audit(
@@ -275,7 +287,3 @@ def filtered_students(actor, *, preset: str | None = None, search: str | None = 
         ),
     ).distinct()
 
-
-def touch_activity(student: Student) -> None:
-    """Marks observable activity. Called by submission, upload and login paths."""
-    Student.objects.filter(pk=student.pk).update(last_activity_at=timezone.now())

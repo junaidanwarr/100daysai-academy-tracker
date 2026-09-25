@@ -1,0 +1,88 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}{{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{% url 'portal:assignments' %}">← My assignments</a></p>
+    <h1>{{ assignment.title }}</h1>
+    <p class="page-description">
+      {{ assignment.get_type_display }}
+      {% if assignment.due_at %} · due {{ assignment.due_at|date:"d M Y, H:i" }}{% endif %}
+      {% if assignment.max_score is not None %} · marked out of {{ assignment.max_score }}{% endif %}
+    </p>
+  </div>
+  {% if latest %}{% submission_badge latest.status latest.get_status_display %}{% endif %}
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>Instructions</h2></div></div>
+      <div class="card-body">
+        {% if assignment.description %}<p class="pre-wrap">{{ assignment.description }}</p>{% else %}<p class="muted">Your instructor has not written instructions for this one.</p>{% endif %}
+      </div>
+    </div>
+
+    {% if form %}
+      <form method="post" class="card">
+        {% csrf_token %}
+        <div class="card-header">
+          <div>
+            <h2>{% if resubmitting %}Hand in attempt {{ latest.version|add:1 }}{% else %}Hand in your work{% endif %}</h2>
+            <p>
+              {% if resubmitting %}Your earlier attempt stays on record exactly as it was reviewed.{% else %}Once handed in, it goes to your instructor for review.{% endif %}
+              {% if assignment.is_past_due %}<strong>The due date has passed — this will be marked late.</strong>{% endif %}
+            </p>
+          </div>
+        </div>
+        <div class="card-body">
+          {% if form.non_field_errors %}
+            <div class="alert-box alert-error" role="alert">{% for e in form.non_field_errors %}<p class="mb-0">{{ e }}</p>{% endfor %}</div>
+          {% endif %}
+          {% for field in form %}
+            <div class="field">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+              {{ field.errors }}
+            </div>
+          {% endfor %}
+          <button type="submit" class="btn-primary">Hand in</button>
+        </div>
+      </form>
+    {% elif blocked %}
+      <div class="alert-box alert-info" role="status">{{ blocked }}</div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Your attempts</h2><p>With the feedback each received.</p></div></div>
+    {% if history %}
+      <ul class="list">
+        {% for s in history %}
+          <li>
+            <div class="list-row">
+              <p class="detail-value mb-0">Attempt {{ s.version }}</p>
+              {% submission_badge s.status s.get_status_display %}
+            </div>
+            <p class="tiny muted mb-0">
+              {% if s.submitted_at %}Handed in {{ s.submitted_at|date:"d M Y, H:i" }}{% endif %}
+              {% if s.is_late %} · late{% endif %}
+            </p>
+            {% if s.submission_url %}<p class="tiny mb-0"><a href="{{ s.submission_url }}" target="_blank" rel="noopener noreferrer">Your link</a></p>{% endif %}
+            {% if s.reviewed_at %}
+              {% if s.score is not None %}<p class="mt-1 mb-0">Score: <strong>{{ s.score }}</strong>{% if assignment.max_score is not None %} / {{ assignment.max_score }}{% endif %}</p>{% endif %}
+              {% if s.feedback %}<p class="mt-1 mb-0 pre-wrap">{{ s.feedback }}</p>{% endif %}
+              {% if s.rejection_reason %}<p class="mt-1 mb-0 pre-wrap">Reason given: {{ s.rejection_reason }}</p>{% endif %}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty"><p class="empty-title">Nothing handed in yet</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -91,9 +91,11 @@ config/            settings, urls, wsgi/asgi
 apps/
   core/            enums, audit, permissions, settings service, dashboard, cron
   accounts/        custom User, TOTP MFA, sign-in and lockout
-  academy/         batches, students, status machine, saved filters
+  academy/         batches, students, status machine, saved filters,
+                   activity log (activity.py) and its backfill
   research/        criteria sets, versioned submissions, scores
-  assignments/     assignments, versioned attempts, LMS connections
+  assignments/     assignments set in-app or from the LMS, versioned attempts,
+                   review, per-assignment roster, LMS connections
   youtube/         channels, OAuth grants, videos, analytics snapshots
                    api.py sync clients · oauth.py consent · services.py sync engine
   monitoring/      alert rules, evaluators, notifications, jobs, performance
@@ -131,6 +133,36 @@ weightings knows exactly where to spend effort to pass. Hence a separate menu
 (`apps/portal/navigation.py`) rather than a filtered one, and a hard gate on
 every console view. `apps/portal/tests.py` walks the whole boundary from both
 sides.
+
+---
+
+## Tracking students and their assignments
+
+**Activity log.** Every action that matters writes one `StudentActivity` row
+through `apps.academy.activity.record_activity`: sign-ins, research drafts,
+submissions and reviews, assignment submissions and reviews, status changes,
+channels recorded and connected, and videos published (found by the sync).
+Staff add what no service can see — class attendance, missed classes,
+mentoring, contact and private notes — from the student page. `/activity/`
+shows the cohort feed with filters, a per-kind breakdown, the most active
+students and the quiet ones; a student sees their own log at
+`/portal/activity/`, without staff notes.
+
+Only the student's own actions move `last_activity_at`, so a review or a status
+change can never make an absent student look engaged — and the inactivity
+alert reads that field.
+
+**Assignments.** Staff set work per batch (or academy-wide, admins only) with
+a due date and optional maximum score. Students hand it in from the portal as
+text and/or a link; each attempt is a new version, late work is accepted and
+marked late, and a reviewed attempt is never edited. Each assignment has a
+roster listing every student it is set for — including those who have handed
+in nothing — and the `ASSIGNMENT_OVERDUE` alert rule raises one alert per
+student per overdue assignment. LMS imports and webhooks land in the same
+table and are reviewed on the same screen.
+
+For a deployment that predates the log, run `python manage.py backfill_activity`
+once after migrating.
 
 ---
 
@@ -172,6 +204,7 @@ binding.
 | `... --settings=config.settings_local` | Run any command against a local SQLite file instead of PostgreSQL, for exploring the app without provisioning a database |
 | `python manage.py createsuperuser` | Create an admin account |
 | `python manage.py create_student_login <ENROLLMENT_ID>` | Issue a portal login for a student |
+| `python manage.py backfill_activity` | Write activity-log entries for records that predate the log (safe to re-run) |
 | `python manage.py check --deploy` | Production readiness check |
 
 The Django admin at `/admin/` covers every model, with the audit log, signatures

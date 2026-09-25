@@ -35,6 +35,15 @@ class Assignment(SoftDeleteModel):
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("assignments:assignment_detail", args=[self.pk])
+
+    @property
+    def is_past_due(self) -> bool:
+        return bool(self.due_at and self.due_at < timezone.now())
+
 
 class AssignmentSubmission(models.Model):
     """Append-only, exactly like ResearchSubmission."""
@@ -57,6 +66,10 @@ class AssignmentSubmission(models.Model):
     approved_at = models.DateTimeField(null=True, blank=True)
     superseded_at = models.DateTimeField(null=True, blank=True)
 
+    # What the student handed in, when submitted here rather than in the LMS.
+    response_text = models.TextField(null=True, blank=True)
+    submission_url = models.URLField(max_length=500, null=True, blank=True)
+
     # Identifier of this attempt in the external LMS. Unique so a repeated
     # import or a webhook retry cannot duplicate an attempt.
     lms_submission_id = models.CharField(max_length=200, null=True, blank=True, unique=True)
@@ -78,6 +91,26 @@ class AssignmentSubmission(models.Model):
 
     def __str__(self):
         return f"{self.assignment_id} v{self.version}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("assignments:submission_detail", args=[self.pk])
+
+    @property
+    def is_closed(self) -> bool:
+        return self.status in (
+            SubmissionStatus.APPROVED, SubmissionStatus.REJECTED, SubmissionStatus.REVISION_REQUESTED
+        )
+
+    @property
+    def is_late(self) -> bool:
+        due = self.assignment.due_at
+        return bool(due and self.submitted_at and self.submitted_at > due)
+
+    @property
+    def is_from_lms(self) -> bool:
+        return bool(self.lms_submission_id)
 
 
 class AssignmentFile(models.Model):
