@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Portal login · {{ student.full_name }} · 100DaysAI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{{ student.get_absolute_url }}">← {{ student.full_name }}</a></p>
+    <h1>{% if is_reset %}New password issued{% else %}Portal login created{% endif %}</h1>
+    <p class="page-description">{{ student.full_name }} · {{ student.enrollment_id }}</p>
+  </div>
+</div>
+
+<div class="card" style="max-width:40rem">
+  <div class="card-body">
+    <div class="alert-box alert-warning" role="alert">
+      <strong>Shown once.</strong> Copy these now and send them to the student privately.
+      The password is not stored anywhere readable. If it is lost, reset it again.
+    </div>
+
+    <div class="mt-2" style="display:grid;gap:0.75rem;overflow-wrap:anywhere">
+      <div><p class="detail-label">Sign-in page</p><p class="detail-value mono">{{ login_url }}</p></div>
+      <div><p class="detail-label">Email</p><p class="detail-value mono" id="login-email">{{ email }}</p></div>
+      <div><p class="detail-label">Password</p><p class="detail-value mono" id="login-password" style="font-size:1.25rem">{{ password }}</p></div>
+    </div>
+
+    {% if is_reset %}
+      <p class="tiny mt-2">Any session the old password opened has been signed out, and any lockout cleared.</p>
+    {% endif %}
+
+    <div class="form-actions">
+      <button type="button" class="btn-primary" id="copy-login">Copy for the student</button>
+      <a href="{{ student.get_absolute_url }}" class="btn-secondary">Done</a>
+    </div>
+    <p class="tiny" id="copy-note" aria-live="polite"></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  const button = document.getElementById('copy-login');
+  const note = document.getElementById('copy-note');
+  button.addEventListener('click', function () {
+    const text = 'Your 100DaysAI portal login\n'
+      + 'Sign in at: {{ login_url|escapejs }}\n'
+      + 'Email: {{ email|escapejs }}\n'
+      + 'Password: {{ password|escapejs }}';
+    navigator.clipboard.writeText(text).then(
+      function () { note.textContent = 'Copied.'; },
+      function () { note.textContent = 'Copy failed — select the text above instead.'; }
+    );
+  });
+})();
+</script>
+{% endblock %}

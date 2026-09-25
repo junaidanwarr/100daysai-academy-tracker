@@ -3,15 +3,14 @@ Issues a portal login for an existing student.
 
 Students are tracked whether or not they can sign in, so accounts are created on
 request rather than automatically. The password is printed once and is never
-shown in the application UI.
+stored in plain text. Administrators can do the same from the student page.
 """
 
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.academy.models import Student
-from apps.accounts.models import User
-from apps.core.crypto import generate_password
-from apps.core.enums import UserRole
+from apps.accounts.services import StudentLoginError, issue_student_login
+from apps.core.context import system_actor
 
 
 class Command(BaseCommand):
@@ -29,21 +28,18 @@ class Command(BaseCommand):
             raise CommandError(f"No student with Enrollment ID {enrollment_id}.")
 
         if student.user_id:
-            self.stdout.write(f"{student.full_name} already has a login ({student.email}).")
+            self.stdout.write(f"{student.full_name} already has a login ({student.user.email}).")
             return
 
-        password = options["password"] or generate_password()
-        user = User.objects.create_user(
-            email=student.email,
-            password=password,
-            full_name=student.full_name,
-            role=UserRole.STUDENT,
-        )
-        student.user = user
-        student.save(update_fields=["user", "updated_at"])
+        try:
+            user, password = issue_student_login(
+                system_actor("create_student_login"), student, password=options["password"]
+            )
+        except StudentLoginError as exc:
+            raise CommandError(str(exc)) from exc
 
         line = "-" * 56
         self.stdout.write(line)
         self.stdout.write("  STUDENT LOGIN - shown once, here only.")
-        self.stdout.write(f"  {student.email}   {password}")
+        self.stdout.write(f"  {user.email}   {password}")
         self.stdout.write(line)

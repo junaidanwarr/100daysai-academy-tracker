@@ -4,6 +4,7 @@ from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 
 from apps.academy.activity import activity_summary, filtered_activities, log_manual_activity
@@ -18,6 +19,7 @@ from apps.academy.services import (
     update_student,
 )
 from apps.academy.status import ROADMAP_ORDER, allowed_transitions
+from apps.accounts.services import StudentLoginError, issue_student_login, reset_student_password
 from apps.core.enums import ActivityKind, StudentStatus, SubmissionStatus, UserRole
 from apps.core.permissions import can
 from apps.core.settings_service import get_int, RESEARCH_DAYS
@@ -97,6 +99,7 @@ def student_detail(request, pk):
             "history": student.status_history.select_related("changed_by")[:50],
             "open_alerts": student.alerts.filter(status__in=["NEW", "IN_PROGRESS", "ESCALATED"]),
             "can_update": can(actor.role, "student", "update"),
+            "can_manage_login": can(actor.role, "student", "create"),
         },
     )
 
@@ -344,5 +347,49 @@ def activity_feed(request):
                 "by": request.GET.get("by", ""),
                 "days": request.GET.get("days", ""),
             },
+        },
+    )
+
+
+@staff_console
+@never_cache
+@require_http_methods(["POST"])
+def student_portal_login(request, pk):
+    """
+    Creates a portal login, or resets its password, and shows the password once.
+
+    Rendered straight from the POST rather than redirected: a redirect would have
+    to carry the password through the session, and it must not be stored anywhere
+    in plain text. ``never_cache`` keeps it out of the browser cache too.
+    """
+    actor = request.user
+    if not can(actor.role, "student", "create"):
+        raise PermissionDenied("Only an administrator may issue student logins.")
+
+    student = get_object_or_404(Student.objects.for_actor(actor).select_related("user"), pk=pk)
+    action = request.POST.get("action")
+
+    try:
+        if action == "create":
+            user, password = issue_student_login(actor, student)
+        elif action == "reset":
+            password = reset_student_password(actor, student)
+            user = student.user
+        else:
+            messages.error(request, "Unknown action.")
+            return redirect(student.get_absolute_url())
+    except StudentLoginError as exc:
+        messages.error(request, str(exc))
+        return redirect(student.get_absolute_url())
+
+    return render(
+        request,
+        "academy/student_login_issued.html",
+        {
+            "student": student,
+            "email": user.email,
+            "password": password,
+            "is_reset": action == "reset",
+            "login_url": request.build_absolute_uri("/login/"),
         },
     )

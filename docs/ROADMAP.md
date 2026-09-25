@@ -151,6 +151,12 @@ instructor still reaches the whole console and is bounced out of `/portal/`.
 - Fixed: every student sign-in raised a 500, because the post-login redirect
   still pointed at the `academy:portal` route removed in Phase 3.5
 - Fixed: portal stat tiles stacked vertically (missing `grid` class)
+- **Portal login** card on the student page: an administrator creates the
+  student's login or resets its password. The password is shown once, on a
+  page rendered from the POST with caching disabled; it is never put in the
+  session, a message or the audit log. A reset clears any lockout and signs
+  out every session the old password opened. `create_student_login` now uses
+  the same service
 
 **Verified:** 245 tests pass. Seeded SQLite, then drove it in a browser as an
 instructor (feed, roster, review, create assignment, log a mentoring session),

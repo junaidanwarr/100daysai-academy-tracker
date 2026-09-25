@@ -203,7 +203,7 @@ binding.
 | `python manage.py test apps --settings=config.settings_test` | Run the test suite (in-memory SQLite; no database to provision) |
 | `... --settings=config.settings_local` | Run any command against a local SQLite file instead of PostgreSQL, for exploring the app without provisioning a database |
 | `python manage.py createsuperuser` | Create an admin account |
-| `python manage.py create_student_login <ENROLLMENT_ID>` | Issue a portal login for a student |
+| `python manage.py create_student_login <ENROLLMENT_ID>` | Issue a portal login for a student (or use **Create portal login** on the student page) |
 | `python manage.py backfill_activity` | Write activity-log entries for records that predate the log (safe to re-run) |
 | `python manage.py check --deploy` | Production readiness check |
 
