@@ -6,8 +6,9 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from apps.academy.activity import activity_summary, filtered_activities, log_manual_activity
 from apps.academy.filters import STUDENT_PRESETS, get_preset
-from apps.academy.forms import BatchForm, StatusChangeForm, StudentForm
+from apps.academy.forms import ActivityLogForm, BatchForm, StatusChangeForm, StudentForm
 from apps.academy.models import Batch, Student
 from apps.academy.services import (
     change_status,
@@ -17,7 +18,7 @@ from apps.academy.services import (
     update_student,
 )
 from apps.academy.status import ROADMAP_ORDER, allowed_transitions
-from apps.core.enums import StudentStatus, SubmissionStatus, UserRole
+from apps.core.enums import ActivityKind, StudentStatus, SubmissionStatus, UserRole
 from apps.core.permissions import can
 from apps.core.settings_service import get_int, RESEARCH_DAYS
 from apps.academy.status import InvalidTransition
@@ -87,6 +88,12 @@ def student_detail(request, pk):
             "status_form": status_form,
             "channels": student.channels.all(),
             "submissions": student.research_submissions.all(),
+            "assignment_attempts": student.assignment_submissions.select_related("assignment").order_by(
+                "-submitted_at", "-created_at"
+            )[:20],
+            "activities": student.activities.select_related("actor")[:15],
+            "activity_count": student.activities.count(),
+            "activity_form": ActivityLogForm() if can(actor.role, "student", "update") else None,
             "history": student.status_history.select_related("changed_by")[:50],
             "open_alerts": student.alerts.filter(status__in=["NEW", "IN_PROGRESS", "ESCALATED"]),
             "can_update": can(actor.role, "student", "update"),
@@ -246,4 +253,96 @@ def batch_create(request):
         request,
         "academy/batch_form.html",
         {"form": form, "default_research_days": get_int(RESEARCH_DAYS)},
+    )
+
+
+@staff_console
+@require_http_methods(["POST"])
+def student_log_activity(request, pk):
+    actor = request.user
+    if not can(actor.role, "student", "update"):
+        raise PermissionDenied("Your role may not log activity.")
+
+    student = get_object_or_404(Student.objects.for_actor(actor), pk=pk)
+    form = ActivityLogForm(request.POST)
+    if form.is_valid():
+        activity = log_manual_activity(
+            actor,
+            student,
+            kind=form.cleaned_data["kind"],
+            summary=form.cleaned_data["summary"],
+            detail=form.cleaned_data.get("detail") or None,
+            occurred_at=form.cleaned_data.get("occurred_at"),
+        )
+        messages.success(request, f"Logged: {activity.get_kind_display().lower()}.")
+    else:
+        errors = "; ".join(e for errs in form.errors.values() for e in errs)
+        messages.error(request, f"Activity not logged. {errors}")
+    return redirect(student.get_absolute_url() + "#activity")
+
+
+ACTIVITY_WINDOWS = [(1, "Last 24 hours"), (7, "Last 7 days"), (30, "Last 30 days"), (90, "Last 90 days")]
+
+
+@staff_console
+def activity_feed(request):
+    """Everything every student in scope has done, and everything done for them."""
+    actor = request.user
+    if not can(actor.role, "student", "read"):
+        raise PermissionDenied("Your role may not view student activity.")
+
+    try:
+        days = int(request.GET.get("days") or 7)
+    except ValueError:
+        days = 7
+    if days not in dict(ACTIVITY_WINDOWS):
+        days = 7
+
+    student = None
+    student_id = request.GET.get("student") or None
+    if student_id:
+        student = Student.objects.for_actor(actor).filter(pk=student_id).first()
+        if student is None:
+            raise PermissionDenied("That student is not in your scope.")
+
+    batch_id = request.GET.get("batch") or None
+    queryset = filtered_activities(
+        actor,
+        student_id=student_id,
+        batch_id=batch_id,
+        kind=request.GET.get("kind") or None,
+        # A single student's page shows their whole history unless narrowed.
+        days=None if student and not request.GET.get("days") else days,
+        search=request.GET.get("search") or None,
+        actor_filter=request.GET.get("by") or None,
+    )
+    page = Paginator(queryset, 50).get_page(request.GET.get("page"))
+
+    batches = Batch.objects.all()
+    if actor.role == UserRole.INSTRUCTOR:
+        batches = batches.filter(Q(instructor=actor) | Q(students__instructor=actor)).distinct()
+
+    query = request.GET.copy()
+    query.pop("page", None)
+
+    return render(
+        request,
+        "academy/activity_feed.html",
+        {
+            "page_obj": page,
+            "summary": None if student else activity_summary(actor, days=days, batch_id=batch_id),
+            "student": student,
+            "batches": batches,
+            "kinds": ActivityKind.choices,
+            "windows": ACTIVITY_WINDOWS,
+            "days": days,
+            "querystring": query.urlencode(),
+            "filters": {
+                "search": request.GET.get("search", ""),
+                "batch": batch_id or "",
+                "kind": request.GET.get("kind", ""),
+                "by": request.GET.get("by", ""),
+                "days": request.GET.get("days", ""),
+            },
+        },
     )

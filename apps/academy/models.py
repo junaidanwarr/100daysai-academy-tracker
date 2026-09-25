@@ -7,6 +7,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.enums import (
+    ActivityKind,
     AgreementStatus,
     BatchStatus,
     CompletionRecordStatus,
@@ -231,3 +232,73 @@ class StudentStatusHistory(models.Model):
 
     def __str__(self):
         return f"{self.student_id}: {self.from_status or 'new'} to {self.to_status}"
+
+
+class StudentActivity(models.Model):
+    """
+    Append-only log of everything a student did, and everything done for them.
+
+    Written by the service that performed the action, never inferred afterwards,
+    so the log cannot claim something that did not happen. ``target_type`` and
+    ``target_id`` point at the record the entry is about (a submission, a video)
+    so the feed can link to it and a backfill can tell what is already logged.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="activities")
+    kind = models.CharField(max_length=32, choices=ActivityKind.choices, db_index=True)
+    summary = models.CharField(max_length=300)
+    detail = models.TextField(null=True, blank=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="recorded_activities"
+    )
+    # True when the student did it. Drives "last activity"; see ActivityKind.
+    is_student_action = models.BooleanField(default=False)
+    occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
+    target_type = models.CharField(max_length=64, null=True, blank=True)
+    target_id = models.CharField(max_length=64, null=True, blank=True)
+    metadata = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "student_activities"
+        ordering = ["-occurred_at", "-created_at"]
+        verbose_name_plural = "student activities"
+        indexes = [
+            models.Index(fields=["student", "-occurred_at"]),
+            models.Index(fields=["target_type", "target_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student_id}: {self.kind} @ {self.occurred_at:%Y-%m-%d %H:%M}"
+
+    # Where each kind of target lives, in the console and in the portal.
+    STAFF_TARGET_URLS = {
+        "AssignmentSubmission": "assignments:submission_detail",
+        "ResearchSubmission": "research:submission_detail",
+        "YoutubeChannel": "youtube:channel_detail",
+        "Video": "youtube:video_detail",
+    }
+    PORTAL_TARGET_URLS = {
+        "YoutubeChannel": "portal:channel_detail",
+        "Video": "portal:video_detail",
+    }
+
+    def _target_url(self, table):
+        from django.urls import NoReverseMatch, reverse
+
+        name = table.get(self.target_type or "")
+        if not name or not self.target_id:
+            return None
+        try:
+            return reverse(name, args=[self.target_id])
+        except NoReverseMatch:
+            return None
+
+    @property
+    def staff_url(self):
+        return self._target_url(self.STAFF_TARGET_URLS)
+
+    @property
+    def portal_url(self):
+        return self._target_url(self.PORTAL_TARGET_URLS)

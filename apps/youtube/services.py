@@ -27,10 +27,11 @@ from django.db import transaction
 from django.db.models import F, Q, Sum
 from django.utils import timezone
 
+from apps.academy.activity import record_activity
 from apps.core.audit import write_audit
 from apps.core.context import system_actor
 from apps.core.crypto import decrypt, encrypt
-from apps.core.enums import AuditAction, MetricSource, SyncCadence, SyncStatus, VideoType
+from apps.core.enums import ActivityKind, AuditAction, MetricSource, SyncCadence, SyncStatus, VideoType
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import assert_can
 from apps.core.settings_service import YOUTUBE_SYNC_CADENCE, get_setting
@@ -222,6 +223,14 @@ def complete_connection(actor, channel: YoutubeChannel, code: str, *, ip_address
         ),
         after={"scopes": grant.scopes, "consent_version": grant.consent_version},
         **current_request_meta(),
+    )
+
+    record_activity(
+        channel.student,
+        ActivityKind.CHANNEL_CONNECTED,
+        f'Connected YouTube Analytics for "{channel.channel_name}"',
+        actor=actor,
+        target=grant,
     )
     return grant
 
@@ -433,6 +442,16 @@ def _write_public(channel: YoutubeChannel, stats: api.ChannelStats, videos: list
         )
         created += was_created
         updated += not was_created
+        if was_created:
+            record_activity(
+                channel.student,
+                ActivityKind.VIDEO_PUBLISHED,
+                f'Published "{video.title}" on {channel.channel_name}',
+                target=video,
+                occurred_at=video.published_at,
+                metadata={"video_type": video.video_type},
+                dedupe=True,
+            )
 
         if video.video_type == VideoType.SHORT:
             shorts += 1

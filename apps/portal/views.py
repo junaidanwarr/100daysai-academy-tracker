@@ -16,13 +16,24 @@ for them, not the machinery that produced it.
 from __future__ import annotations
 
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.db.models import F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.academy.activity import portal_activities
 from apps.academy.status import ROADMAP_ORDER
-from apps.assignments.services import scoped_submissions
+from apps.assignments.forms import SubmitAssignmentForm
+from apps.assignments.models import Assignment, AssignmentSubmission
+from apps.assignments.services import (
+    AssignmentStateError,
+    assignments_for_student,
+    scoped_submissions,
+    student_assignment_board,
+    submission_block_reason,
+    submit_assignment,
+)
 from apps.core.enums import MetricSource, SubmissionStatus
 from apps.portal.access import student_required, with_student
 from apps.research.forms import ResearchSubmissionForm
@@ -51,6 +62,7 @@ def overview(request, student):
     latest = submissions.first()
 
     assignments = scoped_submissions(request.user)
+    board = student_assignment_board(student)
 
     return render(
         request,
@@ -68,6 +80,9 @@ def overview(request, student):
             ],
             "assignment_count": assignments.count(),
             "assignments_awaiting": assignments.filter(status__in=AWAITING_REVIEW).count(),
+            "assignments_to_do": sum(1 for row in board if row["can_submit"]),
+            "assignments_overdue": sum(1 for row in board if row["overdue"]),
+            "recent_activity": portal_activities(student)[:5],
             "stages": [
                 {
                     "label": stage.replace("_", " ").title(),
@@ -165,8 +180,9 @@ def _competitor_rows(draft) -> list[dict]:
 
 @with_student
 def assignments(request, student):
-    """Every LMS attempt recorded against this student, newest first."""
-    submissions = scoped_submissions(request.user).order_by("-submitted_at", "-created_at")
+    """Every assignment set for the student, with where they stand on each."""
+    board = student_assignment_board(student)
+    attempts = scoped_submissions(request.user)
 
     return render(
         request,
@@ -174,10 +190,87 @@ def assignments(request, student):
         {
             "active_nav": "portal:assignments",
             "student": student,
-            "submissions": submissions,
-            "awaiting": submissions.filter(status__in=AWAITING_REVIEW).count(),
-            "approved": submissions.filter(status=SubmissionStatus.APPROVED).count(),
+            "board": board,
+            "to_do": sum(1 for row in board if row["can_submit"]),
+            "overdue": sum(1 for row in board if row["overdue"]),
+            "awaiting": attempts.filter(status__in=AWAITING_REVIEW).count(),
+            "approved": sum(
+                1 for row in board if row["latest"] and row["latest"].status == SubmissionStatus.APPROVED
+            ),
+            # Attempts on assignments that are no longer set (closed, or LMS
+            # shells for another batch) are still the student's record.
+            "other_attempts": attempts.exclude(
+                assignment__in=[row["assignment"] for row in board]
+            ).order_by("-submitted_at", "-created_at"),
         },
+    )
+
+
+@with_student
+@require_http_methods(["GET", "POST"])
+def assignment_detail(request, student, pk):
+    """Read the brief, hand work in, and see every earlier attempt with its feedback."""
+    # Visible if set for the student now, or if they have ever attempted it.
+    attempted = AssignmentSubmission.objects.filter(student=student, assignment_id=pk).exists()
+    queryset = assignments_for_student(student)
+    if attempted:
+        queryset = Assignment.objects.select_related("batch")
+    assignment = get_object_or_404(queryset, pk=pk)
+
+    history = AssignmentSubmission.objects.filter(assignment=assignment, student=student).order_by("-version")
+    blocked = submission_block_reason(assignment, student)
+    set_for_student = assignments_for_student(student).filter(pk=assignment.pk).exists()
+    if not set_for_student and not blocked:
+        blocked = "This assignment is no longer set for your batch."
+
+    form = None if blocked else SubmitAssignmentForm(request.POST or None)
+
+    if request.method == "POST" and form is not None and form.is_valid():
+        try:
+            submission = submit_assignment(
+                request.user,
+                student,
+                assignment,
+                response_text=form.cleaned_data.get("response_text"),
+                submission_url=form.cleaned_data.get("submission_url"),
+            )
+            messages.success(
+                request,
+                f"Attempt {submission.version} handed in"
+                + (" — after the due date, so it is marked late." if submission.is_late else "."),
+            )
+            return redirect("portal:assignment_detail", pk=assignment.pk)
+        except AssignmentStateError as exc:
+            form.add_error(None, str(exc))
+
+    latest = history.first()
+    return render(
+        request,
+        "portal/assignment_detail.html",
+        {
+            "active_nav": "portal:assignments",
+            "student": student,
+            "assignment": assignment,
+            "history": history,
+            "latest": latest,
+            "form": form,
+            "blocked": blocked,
+            "resubmitting": latest is not None,
+        },
+    )
+
+
+# --- Activity ---------------------------------------------------------------
+
+
+@with_student
+def activity(request, student):
+    """The student's own log, minus internal staff notes."""
+    page = Paginator(portal_activities(student), 50).get_page(request.GET.get("page"))
+    return render(
+        request,
+        "portal/activity.html",
+        {"active_nav": "portal:activity", "student": student, "page_obj": page},
     )
 
 

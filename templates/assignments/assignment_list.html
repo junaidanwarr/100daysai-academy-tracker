@@ -7,10 +7,11 @@
   <div>
     <h1>Assignments</h1>
     <p class="page-description">
-      Records mirrored from your LMS. Every attempt is kept — an import can never erase feedback
-      already given.
+      Work set here or mirrored from your LMS. Every attempt is kept — a resubmission or an import can
+      never erase feedback already given.
     </p>
   </div>
+  {% if can_create %}<a href="{% url 'assignments:assignment_create' %}" class="btn-primary">New assignment</a>{% endif %}
 </div>
 
 <section class="grid grid-stats">
@@ -18,7 +19,7 @@
   <div class="stat"><p class="stat-label">Attempts recorded</p><p class="stat-value">{{ total_attempts }}</p></div>
   <div class="stat">
     <p class="stat-label">Awaiting review</p>
-    <p class="stat-value {% if awaiting %}warning{% endif %}">{{ awaiting }}</p>
+    <p class="stat-value {% if awaiting %}warning{% endif %}"><a href="?status=awaiting" style="color:inherit">{{ awaiting }}</a></p>
   </div>
   <div class="stat">
     <p class="stat-label">LMS mode</p>
@@ -39,6 +40,16 @@
         <input id="search" name="search" value="{{ filters.search }}" class="input"
                placeholder="Student, Enrollment ID or assignment title">
       </div>
+      <div class="field">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="input">
+          <option value="">Any</option>
+          <option value="awaiting" {% if filters.status == "awaiting" %}selected{% endif %}>Awaiting review</option>
+          {% for value, label in statuses %}
+            <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <button type="submit" class="btn-primary">Search</button>
     </form>
 
@@ -46,7 +57,7 @@
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>Student</th><th>Assignment</th><th>Attempt</th><th>Status</th><th>Submitted</th><th class="numeric">Score</th></tr>
+            <tr><th>Student</th><th>Assignment</th><th>Attempt</th><th>Status</th><th>Submitted</th><th class="numeric">Score</th><th></th></tr>
           </thead>
           <tbody>
             {% for s in submissions %}
@@ -56,13 +67,17 @@
                   <p class="tiny mono">{{ s.student.enrollment_id }}</p>
                 </td>
                 <td class="muted">
-                  {{ s.assignment.title }}
-                  <p class="tiny">{{ s.assignment.get_type_display }}</p>
+                  <a href="{{ s.assignment.get_absolute_url }}">{{ s.assignment.title }}</a>
+                  <p class="tiny">{{ s.assignment.get_type_display }}{% if s.is_from_lms %} · LMS{% endif %}</p>
                 </td>
                 <td class="muted">v{{ s.version }}</td>
                 <td>{% submission_badge s.status s.get_status_display %}</td>
-                <td class="muted">{{ s.submitted_at|date:"d M Y"|default:"—" }}</td>
+                <td class="muted">
+                  {{ s.submitted_at|date:"d M Y"|default:"—" }}
+                  {% if s.is_late %}<p class="tiny" style="color:var(--red-600)">late</p>{% endif %}
+                </td>
                 <td class="numeric">{% if s.score is not None %}{{ s.score }}{% else %}—{% endif %}</td>
+                <td class="text-right"><a href="{{ s.get_absolute_url }}" class="btn-secondary btn-sm">Open</a></td>
               </tr>
             {% endfor %}
           </tbody>
@@ -72,7 +87,8 @@
       <div class="empty">
         <p class="empty-title">No attempts recorded</p>
         <p class="empty-description">
-          Import a CSV export from your LMS, or point its webhook at this system.
+          Set an assignment for students to hand in through their portal, import a CSV export from
+          your LMS, or point its webhook at this system.
         </p>
       </div>
     {% endif %}
@@ -144,10 +160,11 @@
           {% for a in assignments %}
             <li class="list-row">
               <div style="min-width:0">
-                <p class="detail-value">{{ a.title }}</p>
+                <p class="detail-value"><a href="{{ a.get_absolute_url }}">{{ a.title }}</a></p>
                 <p class="tiny">
                   {{ a.batch.code|default:"All batches" }} · {{ a.get_type_display }}
                   {% if a.due_at %} · due {{ a.due_at|date:"d M Y" }}{% endif %}
+                  {% if not a.is_active %} · closed{% endif %}
                 </p>
               </div>
               <span class="muted">{{ a.submission_count }}</span>
@@ -157,7 +174,10 @@
       {% else %}
         <div class="empty">
           <p class="empty-title">None yet</p>
-          <p class="empty-description">Imports create a shell assignment automatically, which you can rename.</p>
+          <p class="empty-description">
+            {% if can_create %}<a href="{% url 'assignments:assignment_create' %}">Set one</a>, or import from the LMS — imports{% else %}Imports{% endif %}
+            create a shell assignment automatically, which you can rename.
+          </p>
         </div>
       {% endif %}
     </div>

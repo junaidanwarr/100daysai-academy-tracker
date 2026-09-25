@@ -1,0 +1,18 @@
+{% load academy_tags %}
+<li class="timeline-item">
+  <div class="list-row" style="align-items:flex-start">
+    <div style="min-width:0">
+      <p class="detail-value mb-0">
+        {% if show_student %}<a href="{{ a.student.get_absolute_url }}" style="font-weight:600;color:var(--slate-900)">{{ a.student.full_name }}</a> · {% endif %}
+        {% if link and a.staff_url %}<a href="{{ a.staff_url }}">{{ a.summary }}</a>{% elif portal and a.portal_url %}<a href="{{ a.portal_url }}">{{ a.summary }}</a>{% else %}{{ a.summary }}{% endif %}
+      </p>
+      <p class="tiny mb-0">
+        {{ a.occurred_at|date:"d M Y, H:i" }}
+        {% if show_student %} · <span class="mono">{{ a.student.enrollment_id }}</span>{% endif %}
+        {% if not a.is_student_action %} · {{ a.actor.full_name|default:"System" }}{% endif %}
+      </p>
+      {% if a.detail %}<p class="muted mt-1 mb-0 pre-wrap">{{ a.detail|truncatechars:400 }}</p>{% endif %}
+    </div>
+    <span class="nowrap">{% activity_badge a.kind a.get_kind_display %}</span>
+  </div>
+</li>

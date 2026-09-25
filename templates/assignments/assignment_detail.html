@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ assignment.title }} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{% url 'assignments:assignment_list' %}">← Assignments</a></p>
+    <h1>{{ assignment.title }}</h1>
+    <p class="page-description">
+      {{ assignment.batch.code|default:"All batches" }} · {{ assignment.get_type_display }}
+      {% if assignment.due_at %} · due {{ assignment.due_at|date:"d M Y, H:i" }}{% else %} · no due date{% endif %}
+      {% if assignment.max_score is not None %} · out of {{ assignment.max_score }}{% endif %}
+    </p>
+  </div>
+  <div class="flex gap-1 items-center">
+    {% if not assignment.is_active %}{% tone_badge "Closed" "slate" %}{% elif assignment.is_past_due %}{% tone_badge "Past due" "amber" %}{% else %}{% tone_badge "Open" "emerald" %}{% endif %}
+    {% if can_edit %}<a href="{% url 'assignments:assignment_edit' assignment.pk %}" class="btn-secondary">Edit</a>{% endif %}
+  </div>
+</div>
+
+<section class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Set for</p><p class="stat-value">{{ counts.total }}</p><p class="stat-hint">students you can see</p></div>
+  <div class="stat"><p class="stat-label">Handed in</p><p class="stat-value">{{ counts.submitted }}</p></div>
+  <div class="stat"><p class="stat-label">Awaiting review</p><p class="stat-value {% if counts.awaiting %}warning{% endif %}">{{ counts.awaiting }}</p></div>
+  <div class="stat"><p class="stat-label">Approved</p><p class="stat-value">{{ counts.approved }}</p></div>
+  <div class="stat">
+    <p class="stat-label">{% if assignment.is_past_due %}Overdue{% else %}Not yet submitted{% endif %}</p>
+    <p class="stat-value {% if counts.overdue %}warning{% endif %}">{% if assignment.is_past_due %}{{ counts.overdue }}{% else %}{{ counts.missing }}{% endif %}</p>
+  </div>
+</section>
+
+<div class="grid grid-3 mt-2">
+  <div class="span-2 card">
+    <div class="card-header">
+      <div><h2>Roster</h2><p>Every student this is set for — including those who have handed in nothing.</p></div>
+    </div>
+    <form class="filter-bar" method="get">
+      <div class="field filter-grow">
+        <label for="state">Show</label>
+        <select id="state" name="state" class="input" onchange="this.form.submit()">
+          <option value="">Everyone</option>
+          <option value="awaiting" {% if state == "awaiting" %}selected{% endif %}>Awaiting review</option>
+          <option value="returned" {% if state == "returned" %}selected{% endif %}>Sent back</option>
+          <option value="approved" {% if state == "approved" %}selected{% endif %}>Approved</option>
+          <option value="overdue" {% if state == "overdue" %}selected{% endif %}>Overdue</option>
+          <option value="missing" {% if state == "missing" %}selected{% endif %}>Not submitted</option>
+        </select>
+      </div>
+      <noscript><button type="submit" class="btn-primary">Filter</button></noscript>
+    </form>
+
+    {% if rows %}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>State</th><th>Attempts</th><th>Last handed in</th><th class="numeric">Score</th><th></th></tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>
+                  <a href="{{ row.student.get_absolute_url }}" style="font-weight:500;color:var(--slate-900)">{{ row.student.full_name }}</a>
+                  <p class="tiny mono">{{ row.student.enrollment_id }}</p>
+                </td>
+                <td>{% roster_badge row.state %}</td>
+                <td class="muted">{{ row.attempts }}</td>
+                <td class="muted">
+                  {% if row.latest %}
+                    {{ row.latest.submitted_at|date:"d M Y"|default:"—" }}
+                    {% if row.latest.is_late %}<p class="tiny" style="color:var(--red-600)">late</p>{% endif %}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="numeric">{% if row.latest.score is not None %}{{ row.latest.score }}{% else %}—{% endif %}</td>
+                <td class="text-right">
+                  {% if row.latest %}
+                    <a href="{{ row.latest.get_absolute_url }}" class="btn-secondary btn-sm">
+                      {% if can_review and row.state == "awaiting" %}Review{% else %}Open{% endif %}
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">Nobody in this view</p>
+        <p class="empty-description">{% if state %}Try another filter.{% else %}No tracked students are in scope for this assignment.{% endif %}</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Instructions</h2></div></div>
+    <div class="card-body">
+      {% if assignment.description %}<p class="pre-wrap">{{ assignment.description }}</p>{% else %}<p class="muted">No instructions written.</p>{% endif %}
+      {% if assignment.lms_assignment_id %}
+        <p class="tiny mt-2">Linked to LMS assignment <code>{{ assignment.lms_assignment_id }}</code>.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

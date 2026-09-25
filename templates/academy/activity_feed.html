@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}Activity{% if student %} · {{ student.full_name }}{% endif %} · 100DaysAI Academy Tracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    {% if student %}
+      <p class="tiny"><a href="{{ student.get_absolute_url }}">← {{ student.full_name }}</a></p>
+      <h1>Activity · {{ student.full_name }}</h1>
+      <p class="page-description">
+        {{ student.enrollment_id }} · last activity of their own:
+        {{ student.last_activity_at|date:"d M Y, H:i"|default:"never" }}
+      </p>
+    {% else %}
+      <h1>Activity</h1>
+      <p class="page-description">
+        Everything students did and everything done for them, written by the action itself — nothing
+        here is inferred. Only a student's own actions count as their activity.
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+{% if summary %}
+  <section class="grid grid-stats">
+    <div class="stat"><p class="stat-label">Events</p><p class="stat-value">{{ summary.total }}</p><p class="stat-hint">{{ summary.days }} day window</p></div>
+    <div class="stat"><p class="stat-label">By students</p><p class="stat-value">{{ summary.student_actions }}</p></div>
+    <div class="stat">
+      <p class="stat-label">Active students</p>
+      <p class="stat-value">{{ summary.active_students }}<span class="muted" style="font-size:1rem"> / {{ summary.tracked_students }}</span></p>
+      <p class="stat-hint">did something themselves</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Quiet</p>
+      <p class="stat-value {% if summary.quiet_count %}warning{% endif %}">{{ summary.quiet_count }}</p>
+      <p class="stat-hint">nothing of their own</p>
+    </div>
+  </section>
+
+  <div class="grid grid-3 mt-2">
+    <div class="card">
+      <div class="card-header"><div><h2>What happened</h2></div></div>
+      <div class="card-body">
+        {% with peak=summary.by_kind.0.2 %}
+          {% for kind, label, n in summary.by_kind %}
+            <div class="hbar-row">
+              <span class="hbar-label"><a href="?kind={{ kind }}&days={{ days }}">{{ label }}</a></span>
+              <div class="hbar-track"><div class="hbar-fill" style="width: {{ n|bar_height:peak }}%"></div></div>
+              <span class="hbar-value">{{ n }}</span>
+            </div>
+          {% empty %}
+            <p class="empty-description">Nothing recorded in this window.</p>
+          {% endfor %}
+        {% endwith %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Most active</h2><p>Their own actions, this window.</p></div></div>
+      {% if summary.most_active %}
+        <ul class="list">
+          {% for s in summary.most_active %}
+            <li class="list-row">
+              <a href="{% url 'academy:activity_feed' %}?student={{ s.pk }}">{{ s.full_name }}</a>
+              <span class="muted">{{ s.action_count }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty"><p class="empty-title">Nobody yet</p></div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div><h2>Quiet students</h2><p>Nothing of their own in {{ summary.days }} day(s).</p></div></div>
+      {% if summary.quiet %}
+        <ul class="list">
+          {% for s in summary.quiet %}
+            <li class="list-row">
+              <div>
+                <a href="{{ s.get_absolute_url }}">{{ s.full_name }}</a>
+                <p class="tiny">{{ s.batch.code }} · last seen {{ s.last_activity_at|date:"d M Y"|default:"never" }}</p>
+              </div>
+              <a class="btn-secondary btn-sm" href="{% url 'academy:activity_feed' %}?student={{ s.pk }}">Log</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty"><p class="empty-title">Everyone was active</p></div>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="card mt-2">
+  <form class="filter-bar" method="get">
+    {% if student %}<input type="hidden" name="student" value="{{ student.pk }}">{% endif %}
+    {% if not student %}
+      <div class="field filter-grow">
+        <label for="search">Search</label>
+        <input id="search" name="search" value="{{ filters.search }}" class="input" placeholder="Student, Enrollment ID or text">
+      </div>
+      <div class="field">
+        <label for="batch">Batch</label>
+        <select id="batch" name="batch" class="input">
+          <option value="">All</option>
+          {% for b in batches %}<option value="{{ b.pk }}" {% if filters.batch == b.pk|stringformat:"s" %}selected{% endif %}>{{ b.code }}</option>{% endfor %}
+        </select>
+      </div>
+    {% endif %}
+    <div class="field">
+      <label for="kind">Kind</label>
+      <select id="kind" name="kind" class="input">
+        <option value="">Any</option>
+        {% for value, label in kinds %}<option value="{{ value }}" {% if filters.kind == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="by">By</label>
+      <select id="by" name="by" class="input">
+        <option value="">Anyone</option>
+        <option value="student" {% if filters.by == "student" %}selected{% endif %}>The student</option>
+        <option value="staff" {% if filters.by == "staff" %}selected{% endif %}>Staff or system</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="days">Window</label>
+      <select id="days" name="days" class="input">
+        {% if student %}<option value="">All time</option>{% endif %}
+        {% for value, label in windows %}
+          <option value="{{ value }}" {% if student %}{% if filters.days == value|stringformat:"s" %}selected{% endif %}{% elif days == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn-primary">Filter</button>
+  </form>
+
+  {% if page_obj.object_list %}
+    <ol class="list" style="list-style:none">
+      {% for a in page_obj %}
+        {% include "academy/_activity_item.html" with a=a show_student=student|yesno:",1" link=True %}
+      {% endfor %}
+    </ol>
+    {% if page_obj.has_other_pages %}
+      <div class="flex gap-1 justify-between items-center card-body">
+        <span class="tiny">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} entries</span>
+        <div class="flex gap-1">
+          {% if page_obj.has_previous %}<a class="btn-secondary btn-sm" href="?{{ querystring }}&page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn-secondary btn-sm" href="?{{ querystring }}&page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="empty">
+      <p class="empty-title">No activity matches</p>
+      <p class="empty-description">Widen the window or clear a filter.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

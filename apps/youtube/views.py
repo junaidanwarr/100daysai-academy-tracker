@@ -7,8 +7,9 @@ from django.db.models import Count, F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
 
+from apps.academy.activity import record_activity
 from apps.core.audit import diff_fields, snapshot, write_audit
-from apps.core.enums import AuditAction, ChannelStatus, MetricSource, SubmissionStatus, SyncStatus, VideoType
+from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, MetricSource, SubmissionStatus, SyncStatus, VideoType
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import can
 from apps.youtube import oauth, services
@@ -143,6 +144,14 @@ def channel_create(request):
             ),
             after={"channel_name": channel.channel_name, "status": channel.status},
             **current_request_meta(),
+        )
+
+        record_activity(
+            channel.student,
+            ActivityKind.CHANNEL_ADDED,
+            f'Channel "{channel.channel_name}" recorded',
+            actor=actor,
+            target=channel,
         )
 
         if downgraded:

@@ -43,7 +43,7 @@ def _safe_next(raw: str | None) -> str | None:
 
 
 def _home_for(user) -> str:
-    return reverse("academy:portal") if user.role == UserRole.STUDENT else reverse("core:dashboard")
+    return reverse("portal:overview") if user.role == UserRole.STUDENT else reverse("core:dashboard")
 
 
 @require_http_methods(["GET", "POST"])

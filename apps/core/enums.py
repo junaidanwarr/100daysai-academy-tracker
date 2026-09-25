@@ -296,3 +296,58 @@ class AssignmentType(models.TextChoices):
     QUIZ = "QUIZ", "Quiz"
     PROJECT = "PROJECT", "Project"
     OTHER = "OTHER", "Other"
+
+
+class ActivityKind(models.TextChoices):
+    """
+    Everything that shows up in a student's activity log.
+
+    The first group is something the student did; the second is something done
+    to or for them. Only the first counts towards "last activity", so a burst of
+    staff reviews can never make an absent student look engaged.
+    """
+
+    # Student actions.
+    LOGIN = "LOGIN", "Signed in"
+    RESEARCH_DRAFT_SAVED = "RESEARCH_DRAFT_SAVED", "Research draft saved"
+    RESEARCH_SUBMITTED = "RESEARCH_SUBMITTED", "Research submitted"
+    ASSIGNMENT_SUBMITTED = "ASSIGNMENT_SUBMITTED", "Assignment submitted"
+    CHANNEL_CONNECTED = "CHANNEL_CONNECTED", "Channel analytics connected"
+    VIDEO_PUBLISHED = "VIDEO_PUBLISHED", "Video published"
+    CLASS_ATTENDED = "CLASS_ATTENDED", "Attended a class"
+    MENTOR_SESSION = "MENTOR_SESSION", "Mentoring session"
+
+    # Actions by staff or the system.
+    RESEARCH_REVIEWED = "RESEARCH_REVIEWED", "Research reviewed"
+    ASSIGNMENT_REVIEWED = "ASSIGNMENT_REVIEWED", "Assignment reviewed"
+    STATUS_CHANGED = "STATUS_CHANGED", "Status changed"
+    CHANNEL_ADDED = "CHANNEL_ADDED", "Channel recorded"
+    CLASS_MISSED = "CLASS_MISSED", "Missed a class"
+    CONTACT = "CONTACT", "Contacted by staff"
+    NOTE = "NOTE", "Staff note"
+
+
+STUDENT_ACTIVITY_KINDS = frozenset({
+    ActivityKind.LOGIN,
+    ActivityKind.RESEARCH_DRAFT_SAVED,
+    ActivityKind.RESEARCH_SUBMITTED,
+    ActivityKind.ASSIGNMENT_SUBMITTED,
+    ActivityKind.CHANNEL_CONNECTED,
+    ActivityKind.VIDEO_PUBLISHED,
+    ActivityKind.CLASS_ATTENDED,
+    ActivityKind.MENTOR_SESSION,
+})
+
+# What staff may record by hand from the student page. Everything else is
+# written by the action it describes, so it cannot be claimed without happening.
+MANUAL_ACTIVITY_KINDS = [
+    ActivityKind.CLASS_ATTENDED,
+    ActivityKind.CLASS_MISSED,
+    ActivityKind.MENTOR_SESSION,
+    ActivityKind.CONTACT,
+    ActivityKind.NOTE,
+]
+
+# Never shown in the student's own portal: an internal note is written about the
+# student for staff, in the same way the evaluator's private notes are withheld.
+STAFF_ONLY_ACTIVITY_KINDS = frozenset({ActivityKind.NOTE})

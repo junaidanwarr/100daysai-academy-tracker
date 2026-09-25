@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load academy_tags %}
+{% block title %}{{ submission.assignment.title }} · {{ submission.student.full_name }} · 100DaysAI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{{ submission.assignment.get_absolute_url }}">← {{ submission.assignment.title }}</a></p>
+    <h1>{{ submission.student.full_name }} · attempt {{ submission.version }}</h1>
+    <p class="page-description">
+      <a href="{{ submission.student.get_absolute_url }}">{{ submission.student.enrollment_id }}</a> ·
+      {% if submission.submitted_at %}handed in {{ submission.submitted_at|date:"d M Y, H:i" }}{% else %}not handed in{% endif %}
+      {% if submission.is_from_lms %} · via LMS{% else %} · via portal{% endif %}
+    </p>
+  </div>
+  <div class="flex gap-1 items-center">
+    {% if submission.is_late %}{% tone_badge "Late" "red" %}{% endif %}
+    {% if submission.superseded_at %}{% tone_badge "Superseded" "slate" %}{% endif %}
+    {% submission_badge submission.status submission.get_status_display %}
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 grid" style="gap:1rem">
+    <div class="card">
+      <div class="card-header"><div><h2>What was handed in</h2></div></div>
+      <div class="card-body">
+        {% if submission.submission_url %}
+          <p class="detail-label">Link</p>
+          <p class="detail-value"><a href="{{ submission.submission_url }}" target="_blank" rel="noopener noreferrer">{{ submission.submission_url }}</a></p>
+        {% endif %}
+        {% if submission.response_text %}
+          <p class="detail-label {% if submission.submission_url %}mt-2{% endif %}">Response</p>
+          <p class="detail-value pre-wrap">{{ submission.response_text }}</p>
+        {% endif %}
+        {% if not submission.submission_url and not submission.response_text %}
+          <p class="muted">
+            {% if submission.is_from_lms %}This attempt was recorded from the LMS; the work itself lives there.{% else %}Nothing recorded.{% endif %}
+          </p>
+        {% endif %}
+        {% for f in submission.files.all %}
+          <p class="tiny mt-1">File: {% if f.file_url %}<a href="{{ f.file_url }}" target="_blank" rel="noopener noreferrer">{{ f.file_name }}</a>{% else %}{{ f.file_name }}{% endif %}</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if submission.reviewed_at %}
+      <div class="card">
+        <div class="card-header"><div><h2>Review</h2><p>{{ submission.reviewed_at|date:"d M Y, H:i" }} · {{ submission.evaluator.full_name|default:"LMS" }}</p></div></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div><p class="detail-label">Decision</p><p class="detail-value">{{ submission.get_status_display }}</p></div>
+            <div><p class="detail-label">Score</p><p class="detail-value">{% if submission.score is not None %}{{ submission.score }}{% if submission.assignment.max_score is not None %} / {{ submission.assignment.max_score }}{% endif %}{% else %}—{% endif %}</p></div>
+          </div>
+          {% if submission.feedback %}<p class="detail-label mt-2">Feedback</p><p class="detail-value pre-wrap">{{ submission.feedback }}</p>{% endif %}
+          {% if submission.rejection_reason %}<p class="detail-label mt-2">Reason</p><p class="detail-value pre-wrap">{{ submission.rejection_reason }}</p>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header"><div><h2>Every attempt</h2><p>Nothing is overwritten; each resubmission is a new version.</p></div></div>
+      <ul class="list">
+        {% for h in history %}
+          <li class="list-row">
+            <div>
+              {% if h.pk == submission.pk %}<strong>Attempt {{ h.version }}</strong> (this one){% else %}<a href="{{ h.get_absolute_url }}">Attempt {{ h.version }}</a>{% endif %}
+              <p class="tiny">
+                {{ h.submitted_at|date:"d M Y"|default:"—" }}
+                {% if h.score is not None %} · score {{ h.score }}{% endif %}
+                {% if h.evaluator %} · {{ h.evaluator.full_name }}{% endif %}
+              </p>
+            </div>
+            {% submission_badge h.status h.get_status_display %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <div>
+    {% if form %}
+      <div class="card">
+        <div class="card-header"><div><h2>Review this attempt</h2><p>Final: a reviewed attempt is never edited.</p></div></div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert-box alert-error" role="alert">{% for e in form.non_field_errors %}<p class="mb-0">{{ e }}</p>{% endfor %}</div>
+            {% endif %}
+            {% for field in form %}
+              <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+              </div>
+            {% endfor %}
+            <button type="submit" class="btn-primary" style="width:100%">Record review</button>
+          </form>
+        </div>
+      </div>
+    {% elif not submission.reviewed_at and submission.superseded_at %}
+      <div class="alert-box alert-info">A later attempt replaced this one; review the latest instead.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

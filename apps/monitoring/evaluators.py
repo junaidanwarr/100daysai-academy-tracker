@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from apps.academy.models import Student
 from apps.academy.status import ARCHIVED_STATUSES, RESEARCH_PENDING_STATUSES
+from apps.assignments.models import Assignment, AssignmentSubmission
 from apps.core.enums import AlertPriority, ChannelStatus, SubmissionStatus
 from apps.youtube.models import ChannelOauthGrant, YoutubeChannel
 
@@ -345,6 +346,43 @@ def agreement_unsigned(ctx: EvaluatorContext, params: dict) -> list[AlertCandida
     ]
 
 
+def assignment_overdue(ctx: EvaluatorContext, params: dict) -> list[AlertCandidate]:
+    """
+    One alert per student per assignment whose due date has passed with nothing
+    handed in. Deduplicated per assignment, so a student behind on two pieces
+    of work is two things to chase, not one.
+    """
+    grace = _num(params, "grace_days", 0)
+    cutoff = ctx.now - timedelta(days=grace)
+
+    out = []
+    for assignment in Assignment.objects.filter(is_active=True, due_at__lt=cutoff).select_related("batch"):
+        students = Student.objects.filter(ACTIVE_STUDENTS)
+        if assignment.batch_id:
+            students = students.filter(batch_id=assignment.batch_id)
+        # Only students who were enrolled when it fell due owe it.
+        students = students.filter(enrollment_date__lte=assignment.due_at.date()).exclude(
+            pk__in=AssignmentSubmission.objects.filter(assignment=assignment).values("student_id")
+        )
+        days_late = (ctx.now - assignment.due_at).days
+        for s in students:
+            out.append(
+                AlertCandidate(
+                    student_id=s.pk,
+                    batch_id=s.batch_id,
+                    title="Assignment overdue",
+                    problem=(
+                        f'{s.full_name} ({s.enrollment_id}) has not handed in "{assignment.title}", '
+                        f"due {assignment.due_at:%d %b %Y} ({days_late} day(s) ago)."
+                    ),
+                    assigned_to_id=s.instructor_id,
+                    context={"assignment_id": str(assignment.pk), "grace_days": grace},
+                    dedupe_suffix=str(assignment.pk),
+                )
+            )
+    return out
+
+
 EVALUATORS: dict[str, Evaluator] = {
     "RESEARCH_DEADLINE_MISSED": research_deadline_missed,
     "RESEARCH_DEADLINE_APPROACHING": research_deadline_approaching,
@@ -356,6 +394,7 @@ EVALUATORS: dict[str, Evaluator] = {
     "STUDENT_INACTIVE": student_inactive,
     "ANALYTICS_DISCONNECTED": analytics_disconnected,
     "AGREEMENT_UNSIGNED": agreement_unsigned,
+    "ASSIGNMENT_OVERDUE": assignment_overdue,
 }
 
 EVALUATOR_KEYS = list(EVALUATORS)

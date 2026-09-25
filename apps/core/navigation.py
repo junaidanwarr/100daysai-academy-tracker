@@ -25,6 +25,7 @@ class NavItem:
 
 NAV_ITEMS: list[NavItem] = [
     NavItem("Dashboard", "core:dashboard", "student", 1, "Overview"),
+    NavItem("Activity", "academy:activity_feed", "student", 1, "Overview"),
     NavItem("Students", "academy:student_list", "student", 1, "People"),
     NavItem("Batches", "academy:batch_list", "batch", 1, "People"),
     NavItem("Staff", "core:staff", "staff", 1, "People"),

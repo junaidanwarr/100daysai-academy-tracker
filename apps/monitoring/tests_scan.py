@@ -90,3 +90,47 @@ class AlertScanTests(TestCase):
 
         self.assertEqual(result.rules_evaluated, 0)
         self.assertEqual(Alert.objects.count(), 0)
+
+
+class AssignmentOverdueScanTests(TestCase):
+    """One alert per student per overdue assignment; handing in clears the case."""
+
+    def setUp(self):
+        from apps.assignments.models import Assignment
+
+        self.batch = Batch.objects.create(code="B-1", name="Batch 1", start_date=date(2026, 1, 1))
+        AlertRule.objects.create(
+            key="assignment_overdue",
+            name="Assignment overdue",
+            condition={"evaluator": "ASSIGNMENT_OVERDUE", "params": {"grace_days": 0}},
+            priority=AlertPriority.HIGH,
+            channels=[NotificationChannel.IN_APP],
+            cooldown_hours=24,
+        )
+        self.students = [
+            Student.objects.create(
+                enrollment_id=f"100DAI-2026-000{n}", full_name=f"Student {n}", email=f"{n}@example.test",
+                enrollment_date=date(2026, 1, 5), batch=self.batch, status=StudentStatus.ACTIVE,
+            )
+            for n in (1, 2)
+        ]
+        self.overdue = Assignment.objects.create(
+            title="Branding kit", batch=self.batch, due_at=timezone.now() - timedelta(days=2)
+        )
+        Assignment.objects.create(title="Not due yet", batch=self.batch, due_at=timezone.now() + timedelta(days=2))
+
+    def test_only_students_with_nothing_in_are_flagged(self):
+        from apps.assignments.models import AssignmentSubmission
+        from apps.core.enums import SubmissionStatus
+
+        AssignmentSubmission.objects.create(
+            assignment=self.overdue, student=self.students[0], version=1,
+            status=SubmissionStatus.SUBMITTED, submitted_at=timezone.now(),
+        )
+        result = run_alert_scan()
+        self.assertEqual(result.created, 1)
+        alert = Alert.objects.get()
+        self.assertEqual(alert.student, self.students[1])
+        self.assertIn("Branding kit", alert.problem)
+
+        self.assertEqual(run_alert_scan().created, 0)

@@ -1,8 +1,11 @@
+from datetime import timedelta
+
 from django import forms
+from django.utils import timezone
 
 from apps.academy.models import Batch, Student
 from apps.accounts.models import User
-from apps.core.enums import BatchStatus, StudentStatus, UserRole
+from apps.core.enums import MANUAL_ACTIVITY_KINDS, BatchStatus, StudentStatus, UserRole
 
 
 class StudentForm(forms.ModelForm):
@@ -92,3 +95,32 @@ class BatchForm(forms.ModelForm):
 
     def clean_code(self):
         return self.cleaned_data["code"].upper()
+
+
+class ActivityLogForm(forms.Form):
+    """Attendance, mentoring, contact and notes — the things no service can see."""
+
+    kind = forms.ChoiceField(label="What happened", choices=[])
+    summary = forms.CharField(
+        max_length=300,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Live class: thumbnails and titles"}),
+    )
+    occurred_at = forms.DateTimeField(
+        label="When",
+        required=False,
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+        help_text="Leave blank for now.",
+    )
+    detail = forms.CharField(required=False, label="Details", widget=forms.Textarea(attrs={"rows": 2}))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["kind"].choices = [(k.value, k.label) for k in MANUAL_ACTIVITY_KINDS]
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "input")
+
+    def clean_occurred_at(self):
+        value = self.cleaned_data.get("occurred_at")
+        if value and value > timezone.now() + timedelta(minutes=5):
+            raise forms.ValidationError("An activity cannot be logged in the future.")
+        return value

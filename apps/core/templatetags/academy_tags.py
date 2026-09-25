@@ -142,3 +142,41 @@ def get_item(mapping, key):
     if hasattr(mapping, "get"):
         return mapping.get(key, 0)
     return 0
+
+
+ACTIVITY_TONES = {
+    "LOGIN": "slate",
+    "RESEARCH_DRAFT_SAVED": "slate",
+    "RESEARCH_SUBMITTED": "blue",
+    "ASSIGNMENT_SUBMITTED": "blue",
+    "CHANNEL_CONNECTED": "teal",
+    "VIDEO_PUBLISHED": "red",
+    "CLASS_ATTENDED": "emerald",
+    "MENTOR_SESSION": "emerald",
+    "RESEARCH_REVIEWED": "violet",
+    "ASSIGNMENT_REVIEWED": "violet",
+    "STATUS_CHANGED": "indigo",
+    "CHANNEL_ADDED": "cyan",
+    "CLASS_MISSED": "amber",
+    "CONTACT": "brand",
+    "NOTE": "slate",
+}
+
+ROSTER_STATES = {
+    "approved": ("Approved", "emerald"),
+    "awaiting": ("Awaiting review", "blue"),
+    "returned": ("Sent back", "amber"),
+    "overdue": ("Overdue", "red"),
+    "missing": ("Not submitted", "slate"),
+}
+
+
+@register.simple_tag
+def activity_badge(kind, label):
+    return _badge(label, ACTIVITY_TONES.get(kind, "slate"))
+
+
+@register.simple_tag
+def roster_badge(state):
+    label, tone = ROSTER_STATES.get(state, (state, "slate"))
+    return _badge(label, tone)

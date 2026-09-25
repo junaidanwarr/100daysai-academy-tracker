@@ -7,61 +7,78 @@
   <div>
     <h1>My assignments</h1>
     <p class="page-description">
-      Attempts recorded against you from the LMS. Every attempt is kept — a
-      resubmission is a new version, not an edit of the last one.
+      Everything set for your batch. Every attempt is kept — a resubmission is a
+      new version, not an edit of the last one.
     </p>
   </div>
 </div>
 
-<div class="grid-stats">
-  <div class="stat">
-    <p class="stat-label">Attempts</p>
-    <p class="stat-value">{{ submissions|length }}</p>
-  </div>
-  <div class="stat">
-    <p class="stat-label">Awaiting review</p>
-    <p class="stat-value">{{ awaiting }}</p>
-  </div>
-  <div class="stat">
-    <p class="stat-label">Approved</p>
-    <p class="stat-value">{{ approved }}</p>
-  </div>
+<div class="grid grid-stats">
+  <div class="stat"><p class="stat-label">Set for you</p><p class="stat-value">{{ board|length }}</p></div>
+  <div class="stat"><p class="stat-label">To hand in</p><p class="stat-value">{{ to_do }}</p></div>
+  <div class="stat"><p class="stat-label">Overdue</p><p class="stat-value {% if overdue %}warning{% endif %}">{{ overdue }}</p></div>
+  <div class="stat"><p class="stat-label">Awaiting review</p><p class="stat-value">{{ awaiting }}</p></div>
+  <div class="stat"><p class="stat-label">Approved</p><p class="stat-value">{{ approved }}</p></div>
 </div>
 
 <div class="card mt-2">
-  <div class="card-header"><div><h2>All attempts</h2></div></div>
-  {% if submissions %}
+  <div class="card-header"><div><h2>Assignments</h2><p>Soonest due first.</p></div></div>
+  {% if board %}
     <ul class="list">
-      {% for s in submissions %}
+      {% for row in board %}
         <li>
           <div class="list-row">
-            <div>
-              <p class="detail-value mb-0">{{ s.assignment.title }} · version {{ s.version }}</p>
+            <div style="min-width:0">
+              <p class="detail-value mb-0"><a href="{% url 'portal:assignment_detail' row.assignment.pk %}">{{ row.assignment.title }}</a></p>
               <p class="tiny muted mb-0">
-                {% if s.submitted_at %}Submitted {{ s.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}
-                {% if s.assignment.due_at %} · due {{ s.assignment.due_at|date:"d M Y" }}{% endif %}
+                {{ row.assignment.get_type_display }}
+                {% if row.assignment.due_at %} · due {{ row.assignment.due_at|date:"d M Y, H:i" }}{% else %} · no due date{% endif %}
+                {% if row.latest %} · attempt {{ row.latest.version }}{% endif %}
+                {% if row.latest.score is not None %} · score {{ row.latest.score }}{% if row.assignment.max_score is not None %}/{{ row.assignment.max_score }}{% endif %}{% endif %}
               </p>
             </div>
-            {% submission_badge s.status s.get_status_display %}
+            <div class="flex gap-1 items-center">
+              {% if row.latest %}
+                {% submission_badge row.latest.status row.latest.get_status_display %}
+              {% elif row.overdue %}
+                {% tone_badge "Overdue" "red" %}
+              {% else %}
+                {% tone_badge "To do" "slate" %}
+              {% endif %}
+              {% if row.can_submit %}
+                <a href="{% url 'portal:assignment_detail' row.assignment.pk %}" class="btn-primary btn-sm">
+                  {% if row.latest %}Resubmit{% else %}Hand in{% endif %}
+                </a>
+              {% endif %}
+            </div>
           </div>
-          {% if s.reviewed_at %}
-            <p class="mt-1 mb-0">
-              Score: <strong>{{ s.score|dash }}</strong>{% if s.assignment.max_score %} / {{ s.assignment.max_score }}{% endif %}
-            </p>
-            {% if s.feedback %}<p class="mt-1 mb-0">{{ s.feedback }}</p>{% endif %}
-            {% if s.rejection_reason %}<p class="mt-1 mb-0">Reason given: {{ s.rejection_reason }}</p>{% endif %}
-          {% endif %}
         </li>
       {% endfor %}
     </ul>
   {% else %}
     <div class="empty">
-      <p class="empty-title">No assignment attempts recorded</p>
-      <p class="empty-description">
-        Attempts appear here once your LMS work has been imported. Submit through
-        the LMS as usual — this page is a record, not a submission form.
-      </p>
+      <p class="empty-title">Nothing set yet</p>
+      <p class="empty-description">Assignments appear here when your instructor sets them.</p>
     </div>
   {% endif %}
 </div>
+
+{% if other_attempts %}
+  <div class="card mt-2">
+    <div class="card-header"><div><h2>Other attempts on record</h2><p>Recorded from the LMS, or on assignments now closed.</p></div></div>
+    <ul class="list">
+      {% for s in other_attempts %}
+        <li>
+          <div class="list-row">
+            <div>
+              <p class="detail-value mb-0"><a href="{% url 'portal:assignment_detail' s.assignment.pk %}">{{ s.assignment.title }}</a> · version {{ s.version }}</p>
+              <p class="tiny muted mb-0">{% if s.submitted_at %}Submitted {{ s.submitted_at|date:"d M Y" }}{% else %}Not submitted{% endif %}</p>
+            </div>
+            {% submission_badge s.status s.get_status_display %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
 {% endblock %}

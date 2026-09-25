@@ -13,10 +13,11 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.academy.models import Student
-from apps.academy.services import change_status, touch_activity
+from apps.academy.activity import record_activity
+from apps.academy.services import change_status
 from apps.academy.status import InvalidTransition
 from apps.core.audit import write_audit
-from apps.core.enums import AuditAction, StudentStatus, SubmissionStatus
+from apps.core.enums import ActivityKind, AuditAction, StudentStatus, SubmissionStatus
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import assert_can, scope_for, SCOPE_ALL, SCOPE_ASSIGNED, SCOPE_OWN
 from apps.research.models import (
@@ -131,8 +132,20 @@ def submit_research(actor, student: Student, data: dict, competitors: list[dict]
     for row in competitors:
         submission.competitors.create(**row)
 
+    record_activity(
+        student,
+        ActivityKind.RESEARCH_DRAFT_SAVED if as_draft else ActivityKind.RESEARCH_SUBMITTED,
+        (
+            f"Saved a research draft (v{submission.version})"
+            if as_draft
+            else f"{'Resubmitted' if status == SubmissionStatus.RESUBMITTED else 'Submitted'} "
+            f"research v{submission.version}" + (f": {submission.topic}" if submission.topic else "")
+        ),
+        actor=actor,
+        target=submission,
+    )
+
     if not as_draft:
-        touch_activity(student)
         # Move the student into review only from a state where that makes sense.
         if student.status in REVIEWABLE_FROM:
             try:
@@ -239,6 +252,18 @@ def review_research(actor, submission: ResearchSubmission, decision: str,
         pass
 
     explanation = explain_score(result)
+
+    record_activity(
+        submission.student,
+        ActivityKind.RESEARCH_REVIEWED,
+        f"Research v{submission.version} {submission.get_status_display().lower()}"
+        + (f" ({result.total}%)" if scored else "")
+        + f" by {getattr(actor, 'full_name', None) or 'staff'}",
+        actor=actor,
+        detail=feedback or rejection_reason,
+        target=submission,
+        metadata={"decision": decision, "score": float(result.total) if scored else None},
+    )
 
     write_audit(
         actor=actor,
