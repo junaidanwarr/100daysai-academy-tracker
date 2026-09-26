@@ -134,3 +134,43 @@ class AssignmentOverdueScanTests(TestCase):
         self.assertIn("Branding kit", alert.problem)
 
         self.assertEqual(run_alert_scan().created, 0)
+
+
+class BackupJobTests(TestCase):
+    def test_skips_an_in_memory_test_database_rather_than_pretending(self):
+        from apps.monitoring.jobs import backup_database
+
+        self.assertTrue(backup_database()["skipped"])
+
+
+class DefaultsTests(TestCase):
+    """A production database needs rules and criteria without the demo people."""
+
+    def test_installs_rules_criteria_and_factors_with_no_people(self):
+        from django.core.management import call_command
+
+        from apps.accounts.models import User
+        from apps.monitoring.models import ScoringFactor
+        from apps.research.models import ResearchCriteriaSet
+
+        call_command("seed_defaults", stdout=open("/dev/null", "w"))
+        self.assertTrue(AlertRule.objects.filter(key="assignment_overdue", is_active=True).exists())
+        self.assertGreaterEqual(AlertRule.objects.count(), 11)
+        self.assertTrue(ResearchCriteriaSet.objects.get(is_default=True).criteria.exists())
+        self.assertTrue(ScoringFactor.objects.exists())
+        self.assertFalse(Student.objects.exists())
+        self.assertFalse(User.objects.exists())
+
+    def test_never_overwrites_what_an_administrator_changed(self):
+        from django.core.management import call_command
+
+        call_command("seed_defaults", stdout=open("/dev/null", "w"))
+        rule = AlertRule.objects.get(key="student_inactive")
+        rule.is_active = False
+        rule.cooldown_hours = 999
+        rule.save()
+
+        call_command("seed_defaults", stdout=open("/dev/null", "w"))
+        rule.refresh_from_db()
+        self.assertFalse(rule.is_active)
+        self.assertEqual(rule.cooldown_hours, 999)

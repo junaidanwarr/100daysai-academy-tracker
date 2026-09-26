@@ -84,6 +84,15 @@ rather than claiming to have synced.
 
 ---
 
+## Deploying
+
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) covers Render, **PythonAnywhere's free
+tier (no credit card; runs on SQLite)**, Railway and a VPS. On any of them, run
+`python manage.py seed_defaults` once the database exists — without it no alert
+ever fires.
+
+---
+
 ## Layout
 
 ```
@@ -199,11 +208,12 @@ binding.
 | `python manage.py runserver` | Development server |
 | `python manage.py qcluster` | Background job worker |
 | `python manage.py setup_schedules` | Register the default job schedules |
-| `python manage.py seed_demo` | Seed demonstration data |
+| `python manage.py seed_demo` | Seed demonstration data (never in production) |
+| `python manage.py seed_defaults` | Add missing alert rules, research criteria, scoring factors and settings — run on every production deploy; never overwrites your changes |
 | `python manage.py test apps --settings=config.settings_test` | Run the test suite (in-memory SQLite; no database to provision) |
 | `... --settings=config.settings_local` | Run any command against a local SQLite file instead of PostgreSQL, for exploring the app without provisioning a database |
 | `python manage.py createsuperuser` | Create an admin account |
-| `python manage.py create_student_login <ENROLLMENT_ID>` | Issue a portal login for a student |
+| `python manage.py create_student_login <ENROLLMENT_ID>` | Issue a portal login for a student (or use **Create portal login** on the student page) |
 | `python manage.py backfill_activity` | Write activity-log entries for records that predate the log (safe to re-run) |
 | `python manage.py check --deploy` | Production readiness check |
 

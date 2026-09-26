@@ -30,7 +30,7 @@ services:
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
     # Free instances have no shell and no pre-deploy hook, so migrations and the
     # first admin account have to happen here. Both commands are idempotent.
-    startCommand: "python manage.py migrate --noinput && python manage.py bootstrap_admin && python manage.py setup_schedules && gunicorn config.wsgi:application --workers 3 --timeout 120 --access-logfile -"
+    startCommand: "python manage.py migrate --noinput && python manage.py seed_defaults && python manage.py bootstrap_admin && python manage.py setup_schedules && gunicorn config.wsgi:application --workers 3 --timeout 120 --access-logfile -"
     healthCheckPath: /login/
     envVars:
       - key: DATABASE_URL

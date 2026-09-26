@@ -62,6 +62,14 @@ page shows which are configured.
 walkthroughs. **Never run it against production.** Create your first real
 administrator with `createsuperuser` instead.
 
+### Do install the defaults
+
+`manage.py seed_defaults` adds the alert rules, research criteria, scoring
+factors and settings — no people. Without it a production database raises no
+alerts and has no rubric to review research against. It only adds what is
+missing and never overwrites anything an administrator changed, so the Render
+start command and the Procfile run it on every deploy.
+
 ---
 
 ## 2. Render
@@ -197,7 +205,122 @@ Everything else is as section 2.
 web service sleeps after 15 minutes idle and takes about 50 seconds to wake.
 Neither is a fault to debug.
 
-## 2b. Railway — alternative
+## 2b. PythonAnywhere free tier — no credit card, no PostgreSQL
+
+Free PythonAnywhere accounts created after 15 January 2026 get no MySQL, no
+scheduled tasks, and outbound connections only to an allowlist — so a hosted
+Postgres such as Neon is unreachable. The app therefore runs on **SQLite**, in a
+file outside the code checkout. The test suite already runs on SQLite, and the
+connection is tuned for a small multi-user site (WAL, a busy timeout, and
+IMMEDIATE transactions); 600 concurrent signed-in requests during a cron run
+produced no lock errors in testing.
+
+What you accept: one SQLite file on PythonAnywhere's disk (512 MB on free), the
+web app switched off unless you click *Run until 1 month from today* once a
+month, and no background worker — an external scheduler calls the jobs (section 5).
+YouTube and email integrations depend on PythonAnywhere's allowlist.
+
+Replace `USERNAME` below with your PythonAnywhere username throughout.
+
+**1. Get the code.** Dashboard → *New console* → *Bash*:
+
+```bash
+git clone https://github.com/junaidanwarr/100daysai-academy-tracker.git
+mkdir -p ~/academy-data
+```
+
+A private repository needs a GitHub personal access token as the password.
+
+**2. Virtualenv.**
+
+```bash
+mkvirtualenv --python=/usr/bin/python3.13 academy
+cd ~/100daysai-academy-tracker && pip install -r requirements.txt
+```
+
+**3. Secrets and settings.** Generate the three secrets:
+
+```bash
+python -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(50))"
+python -c "import os,base64; print('ENCRYPTION_KEY=' + base64.b64encode(os.urandom(32)).decode())"
+python -c "import secrets; print('CRON_SECRET=' + secrets.token_urlsafe(32))"
+```
+
+Save `ENCRYPTION_KEY` in a password manager. Then create
+`~/100daysai-academy-tracker/.env` (Files tab, or `nano .env`):
+
+```
+DEBUG=false
+SECRET_KEY=...
+ENCRYPTION_KEY=...
+CRON_SECRET=...
+ALLOWED_HOSTS=USERNAME.pythonanywhere.com
+CSRF_TRUSTED_ORIGINS=https://USERNAME.pythonanywhere.com
+SECURE_SSL_REDIRECT=false
+DATABASE_URL=sqlite:////home/USERNAME/academy-data/academy.sqlite3
+BACKUP_DIR=/home/USERNAME/academy-data/backups
+```
+
+`SECURE_SSL_REDIRECT=false` is deliberate: PythonAnywhere's own *Force HTTPS*
+switch does the redirect (step 6), which cannot loop however its proxy labels
+requests. Cookies stay secure-only.
+
+**4. Database, static files, defaults, administrator.**
+
+```bash
+python manage.py migrate
+python manage.py collectstatic --noinput
+python manage.py seed_defaults
+python manage.py createsuperuser
+```
+
+**5. Web app.** *Web* tab → *Add a new web app* → *Manual configuration* (not
+the Django option) → *Python 3.13*. Then set:
+
+| Field | Value |
+|---|---|
+| Source code | `/home/USERNAME/100daysai-academy-tracker` |
+| Working directory | `/home/USERNAME/100daysai-academy-tracker` |
+| Virtualenv | `/home/USERNAME/.virtualenvs/academy` |
+| Static files: URL `/static/` | Directory `/home/USERNAME/100daysai-academy-tracker/staticfiles` |
+
+Open the *WSGI configuration file* link, delete everything in it, and paste:
+
+```python
+import os
+import sys
+
+path = "/home/USERNAME/100daysai-academy-tracker"
+if path not in sys.path:
+    sys.path.insert(0, path)
+
+os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
+
+from django.core.wsgi import get_wsgi_application
+application = get_wsgi_application()
+```
+
+Settings are read from `.env`, so nothing else goes in this file.
+
+**6. HTTPS and go live.** On the *Web* tab turn **Force HTTPS** on, press
+**Reload**, and open `https://USERNAME.pythonanywhere.com/login/`. If it shows an
+error page, the *Error log* link on the same tab says why.
+
+**7. Scheduled jobs.** Set up the external scheduler from section 5, adding
+`backup-database` daily. It snapshots the SQLite file into `BACKUP_DIR` and
+keeps the newest 14. Those copies sit on the same disk, so download one from the
+*Files* tab now and then.
+
+**Updating later:**
+
+```bash
+cd ~/100daysai-academy-tracker && git pull && workon academy
+pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_defaults
+```
+
+then **Reload** on the *Web* tab.
+
+## 2c. Railway — alternative
 
 Managed Postgres, reads the `Procfile`, and runs a worker as a second service.
 Roughly $5–10/month for an academy-sized deployment.
@@ -368,6 +491,7 @@ external scheduler at these and skip the worker process entirely:
 | `flag-inactive` | daily |
 | `youtube-sync` | every 12 hours |
 | `prune-sessions` | weekly |
+| `backup-database` | daily (SQLite only; skips itself on PostgreSQL) |
 
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_CRON_SECRET" https://tracker.yourdomain.com/api/cron/deadline-scan/

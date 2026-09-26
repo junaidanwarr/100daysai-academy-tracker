@@ -14,14 +14,16 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth import authenticate, login as django_login, logout as django_logout
 from django.contrib.auth.hashers import check_password
+from django.db import transaction
 from django.utils import timezone
 
 from apps.accounts.mfa import decrypt_secret, match_recovery_code, verify_totp
 from apps.accounts.models import User
 from apps.core.audit import write_audit
-from apps.core.enums import AuditAction
+from apps.core.crypto import generate_password
+from apps.core.enums import AuditAction, UserRole
 from apps.core.middleware import current_request_meta
-from apps.core.permissions import requires_mfa
+from apps.core.permissions import assert_can, requires_mfa
 
 GENERIC_FAILURE = "Email or password is incorrect."
 
@@ -166,3 +168,86 @@ def mfa_satisfied(request) -> bool:
     if not requires_mfa(user.role):
         return True
     return bool(request.session.get(MFA_SESSION_KEY))
+
+
+# --- Student portal logins --------------------------------------------------
+
+
+class StudentLoginError(Exception):
+    """A login cannot be issued or reset for this student as things stand."""
+
+
+def issue_student_login(actor, student, password: str | None = None) -> tuple[User, str]:
+    """
+    Creates the portal account for a tracked student and links it.
+
+    Returns the password in plain text exactly once, for the caller to hand
+    over; it is never stored or logged anywhere but as a hash. Administrator
+    only: an account is a way into someone's records.
+    """
+    assert_can(actor.role, "student", "create")
+
+    if student.user_id:
+        raise StudentLoginError(f"{student.full_name} already has a login. Reset the password instead.")
+
+    email = (student.email or "").strip().lower()
+    if not email:
+        raise StudentLoginError("Add an email address to the student record first; it is the login name.")
+    if User.objects.filter(email__iexact=email).exists():
+        raise StudentLoginError(
+            f"Another account already uses {email}. Change the student's email, or retire that account first."
+        )
+
+    password = password or generate_password()
+    with transaction.atomic():
+        user = User.objects.create_user(
+            email=email, password=password, full_name=student.full_name, role=UserRole.STUDENT,
+        )
+        student.user = user
+        student.save(update_fields=["user", "updated_at"])
+
+    write_audit(
+        actor=actor,
+        action=AuditAction.CREATE,
+        entity_type="User",
+        entity_id=user.pk,
+        summary=f"Issued a portal login for {student.full_name} ({student.enrollment_id}) as {email}",
+        **current_request_meta(),
+    )
+    return user, password
+
+
+def reset_student_password(actor, student) -> str:
+    """
+    Replaces a student's password and clears any lockout. Changing the password
+    also invalidates every session the old one opened, so a shared or leaked
+    login stops working immediately.
+    """
+    assert_can(actor.role, "student", "create")
+
+    user = student.user
+    if user is None:
+        raise StudentLoginError(f"{student.full_name} has no login yet. Create one instead.")
+    if user.role != UserRole.STUDENT:
+        # A student record linked to a staff account must never become a way
+        # to reset a staff password from the student page.
+        raise StudentLoginError("This record is linked to a staff account; reset it from the Staff page.")
+
+    password = generate_password()
+    user.set_password(password)
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.save(update_fields=["password", "failed_login_count", "locked_until", "updated_at"])
+
+    write_audit(
+        actor=actor,
+        action=AuditAction.UPDATE,
+        entity_type="User",
+        entity_id=user.pk,
+        summary=(
+            f"Reset the portal password for {student.full_name} ({student.enrollment_id}); "
+            "existing sessions signed out"
+        ),
+        **current_request_meta(),
+    )
+    return password

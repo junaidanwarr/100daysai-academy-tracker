@@ -6,6 +6,6 @@
 #           but nothing is monitored automatically and no alert ever fires.
 #
 # Release runs migrations before the new version takes traffic.
-release: python manage.py migrate --noinput && python manage.py setup_schedules
+release: python manage.py migrate --noinput && python manage.py seed_defaults && python manage.py setup_schedules
 web: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120 --access-logfile -
 worker: python manage.py qcluster

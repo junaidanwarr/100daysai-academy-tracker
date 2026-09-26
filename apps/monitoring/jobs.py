@@ -140,6 +140,51 @@ def youtube_sync() -> dict:
     return payload
 
 
+def backup_database() -> dict:
+    """
+    Snapshots a SQLite database and keeps the newest ``BACKUP_KEEP`` copies.
+
+    Uses SQLite's online backup API, which copies a consistent state even while
+    the site is serving requests; copying the file directly can capture a
+    half-written page. The snapshot sits on the same disk, so it guards against
+    a bad import or a mistaken delete, not against losing the host — download a
+    copy now and then. On PostgreSQL the provider owns backups, so this skips.
+    """
+    import sqlite3
+
+    from django.conf import settings
+    from django.db import connection
+
+    if connection.vendor != "sqlite":
+        return {"skipped": True, "reason": "Not a SQLite database; use your provider's backups."}
+
+    source_path = str(settings.DATABASES["default"]["NAME"])
+    if source_path == ":memory:" or "mode=memory" in source_path:
+        return {"skipped": True, "reason": "In-memory database; nothing to back up."}
+
+    backup_dir = settings.BACKUP_DIR
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    target = backup_dir / f"academy-{timezone.now():%Y%m%d-%H%M%S}.sqlite3"
+
+    source = sqlite3.connect(source_path)
+    try:
+        destination = sqlite3.connect(str(target))
+        try:
+            source.backup(destination)
+        finally:
+            destination.close()
+    finally:
+        source.close()
+
+    snapshots = sorted(backup_dir.glob("academy-*.sqlite3"))
+    removed = 0
+    for old in snapshots[: max(0, len(snapshots) - settings.BACKUP_KEEP)]:
+        old.unlink()
+        removed += 1
+
+    return {"file": target.name, "bytes": target.stat().st_size, "kept": len(snapshots) - removed, "removed": removed}
+
+
 def run_named_job(name: str) -> dict:
     """
     Entry point for the scheduler. django-q2 stores a dotted path plus
@@ -161,6 +206,7 @@ JOBS = {
     "flag-inactive": flag_inactive_students,
     "prune-sessions": prune_sessions,
     "youtube-sync": youtube_sync,
+    "backup-database": backup_database,
 }
 
 # Default cadences, registered as django-q2 schedules by `manage.py setup_schedules`.
@@ -171,4 +217,5 @@ JOB_SCHEDULES = {
     "flag-inactive": ("D", 1),
     "prune-sessions": ("W", 1),
     "youtube-sync": ("H", 12),
+    "backup-database": ("D", 1),
 }
