@@ -43,3 +43,23 @@ class DatabaseUrlTests(SimpleTestCase):
         # pointing Django at a database engine it was not configured for.
         self.assertIsNone(_database_from_url("mysql://u:p@h/db"))
         self.assertIsNone(_database_from_url("redis://h:6379"))
+
+
+class SqliteUrlTests(SimpleTestCase):
+    """For free hosts with no reachable PostgreSQL, such as PythonAnywhere."""
+
+    def test_four_slashes_is_an_absolute_path(self):
+        parsed = _database_from_url("sqlite:////home/academy/data/academy.sqlite3")
+        self.assertEqual(parsed["ENGINE"], "django.db.backends.sqlite3")
+        self.assertEqual(str(parsed["NAME"]), "/home/academy/data/academy.sqlite3")
+
+    def test_three_slashes_is_relative_to_the_project(self):
+        from config.settings import BASE_DIR
+
+        self.assertEqual(_database_from_url("sqlite:///db.sqlite3")["NAME"], BASE_DIR / "db.sqlite3")
+
+    def test_is_tuned_for_concurrent_requests(self):
+        options = _database_from_url("sqlite:////tmp/x.sqlite3")["OPTIONS"]
+        self.assertEqual(options["transaction_mode"], "IMMEDIATE")
+        self.assertGreaterEqual(options["timeout"], 10)
+        self.assertIn("journal_mode=WAL", options["init_command"])

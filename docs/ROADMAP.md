@@ -157,6 +157,14 @@ instructor still reaches the whole console and is bounced out of `/portal/`.
   session, a message or the audit log. A reset clears any lockout and signs
   out every session the old password opened. `create_student_login` now uses
   the same service
+- Deploys on PythonAnywhere's free tier (no card, no PostgreSQL):
+  `DATABASE_URL=sqlite:////path` selects SQLite tuned for concurrent requests
+  (WAL, busy timeout, IMMEDIATE transactions), and a `backup-database` cron job
+  snapshots it with SQLite's online backup API. Guide in DEPLOYMENT.md §2b
+- Fixed: a production database had no alert rules, research criteria or scoring
+  factors, because only `seed_demo` created them and that must never run in
+  production. `seed_defaults` installs them without people, never overwrites an
+  administrator's changes, and now runs in the Render start command and Procfile
 
 **Verified:** 245 tests pass. Seeded SQLite, then drove it in a browser as an
 instructor (feed, roster, review, create assignment, log a mentoring session),

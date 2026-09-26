@@ -105,10 +105,16 @@ def _database_from_url(url: str) -> dict | None:
     Render, Heroku, Neon, Supabase and Railway all hand out one DATABASE_URL
     rather than separate host/user/password variables. Parsed with the standard
     library so this costs no extra dependency.
+
+    ``sqlite:////absolute/path.sqlite3`` (four slashes) or
+    ``sqlite:///relative.sqlite3`` selects SQLite, for hosts whose free tier
+    offers no reachable PostgreSQL — PythonAnywhere, notably.
     """
     from urllib.parse import unquote, urlparse
 
     parsed = urlparse(url)
+    if parsed.scheme == "sqlite":
+        return _sqlite_database(parsed.path)
     if parsed.scheme not in {"postgres", "postgresql"}:
         return None
 
@@ -123,6 +129,27 @@ def _database_from_url(url: str) -> dict | None:
         "PORT": str(parsed.port or 5432),
         "CONN_MAX_AGE": env_int("DB_CONN_MAX_AGE", 60),
         "OPTIONS": {},
+    }
+
+
+def _sqlite_database(path: str) -> dict:
+    """
+    SQLite tuned for a small multi-user site rather than a laptop.
+
+    WAL lets pages be read while a write is in progress; the busy timeout makes
+    a second writer wait instead of failing with "database is locked"; and
+    IMMEDIATE transactions take the write lock up front, so a read that turns
+    into a write cannot deadlock against another one mid-transaction.
+    """
+    name = Path(path[1:]) if path.startswith("//") else BASE_DIR / path.lstrip("/")
+    return {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": name,
+        "OPTIONS": {
+            "timeout": 20,
+            "transaction_mode": "IMMEDIATE",
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
+        },
     }
 
 
@@ -143,20 +170,28 @@ DATABASES = {
     }
 }
 
-# Managed Postgres is reached over the public internet, so require TLS unless
-# the operator has said otherwise. A local database stays plaintext.
-if _parsed_database and not env("DB_SSLMODE") and "localhost" not in DATABASES["default"]["HOST"]:
-    DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
+USING_SQLITE = DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
 
-# Connection poolers (and the disposable local PGlite server) do not support
-# server-side prepared statements or held cursors.
-if env_bool("DB_POOLED", False):
-    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
-    DATABASES["default"]["CONN_MAX_AGE"] = 0
-    DATABASES["default"]["OPTIONS"]["prepare_threshold"] = None
+if not USING_SQLITE:
+    # Managed Postgres is reached over the public internet, so require TLS
+    # unless the operator has said otherwise. A local database stays plaintext.
+    if _parsed_database and not env("DB_SSLMODE") and "localhost" not in DATABASES["default"]["HOST"]:
+        DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
 
-if env("DB_SSLMODE"):
-    DATABASES["default"]["OPTIONS"]["sslmode"] = env("DB_SSLMODE")
+    # Connection poolers (and the disposable local PGlite server) do not
+    # support server-side prepared statements or held cursors.
+    if env_bool("DB_POOLED", False):
+        DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+        DATABASES["default"]["CONN_MAX_AGE"] = 0
+        DATABASES["default"]["OPTIONS"]["prepare_threshold"] = None
+
+    if env("DB_SSLMODE"):
+        DATABASES["default"]["OPTIONS"]["sslmode"] = env("DB_SSLMODE")
+
+# Where the backup-database job writes SQLite snapshots. Ignored on PostgreSQL,
+# whose provider backs it up.
+BACKUP_DIR = Path(env("BACKUP_DIR", str(BASE_DIR / "backups")))
+BACKUP_KEEP = env_int("BACKUP_KEEP", 14)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
