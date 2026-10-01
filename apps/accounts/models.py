@@ -60,6 +60,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     # Consecutive failed logins; cleared on success. Drives lockout.
     failed_login_count = models.IntegerField(default=0)
     locked_until = models.DateTimeField(null=True, blank=True)
+    # Set whenever someone other than the user chose the password (a portal
+    # login issued or reset by staff, a seeded or admin-created account). The
+    # user is held on the change-password page until they pick their own.
+    must_change_password = models.BooleanField(default=False)
+    password_changed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

@@ -799,3 +799,9 @@ label, .label { display: block; margin-bottom: 0.375rem; font-size: 0.8125rem; f
 .stage-list { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr)); gap: var(--space-2); }
 .stage-pill .icon { color: var(--emerald-600); }
 .roadmap-percent { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; color: var(--brand-600); font-variant-numeric: tabular-nums; line-height: 1; }
+
+.password-rules { margin: var(--space-2) 0 0; padding-left: 1.1rem; }
+.password-rules li + li { margin-top: 2px; }
+.sidebar-footer { display: flex; flex-direction: column; gap: var(--space-2); }
+.sidebar-footer-link { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--frame-text); font-weight: 500; }
+.sidebar-footer-link:hover { color: #fff; text-decoration: none; }

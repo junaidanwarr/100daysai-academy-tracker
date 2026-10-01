@@ -73,6 +73,8 @@ MIDDLEWARE = [
     # Blocks a Super Admin who has not cleared the TOTP challenge, and records
     # the request IP for the audit trail.
     "apps.accounts.middleware.MfaEnforcementMiddleware",
+    # Holds anyone on an issued password on the change-password page.
+    "apps.accounts.middleware.PasswordChangeRequiredMiddleware",
     "apps.core.middleware.AuditContextMiddleware",
 ]
 
