@@ -3,19 +3,21 @@ from django.contrib import messages
 from apps.core.access import staff_console
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Count, F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST, require_http_methods
 
 from apps.academy.activity import record_activity
 from apps.core.audit import diff_fields, snapshot, write_audit
-from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, MetricSource, SubmissionStatus, SyncStatus, VideoType
+from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, MetricSource, SyncStatus, VideoType
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import can
 from apps.youtube import oauth, services
 from apps.youtube.api import YoutubeApiError
 from apps.youtube.forms import ChannelForm
 from apps.youtube.models import Video, YoutubeChannel
+from apps.youtube.submissions import CONFIRMED_STATUSES, channel_confirmed, research_is_approved
 
 AUDITED_CHANNEL_FIELDS = [
     "channel_name", "channel_url", "youtube_channel_id", "niche", "sub_niche",
@@ -122,13 +124,14 @@ def channel_create(request):
 
         # A channel may be recorded at any time, but it cannot be marked
         # APPROVED before the student's research is approved (spec 23.3).
-        research_approved = channel.student.research_submissions.filter(status=SubmissionStatus.APPROVED).exists()
         downgraded = False
-        if channel.status in (ChannelStatus.APPROVED, ChannelStatus.ACTIVE, ChannelStatus.MONETIZED) and not research_approved:
+        if channel.status in CONFIRMED_STATUSES and not research_is_approved(channel.student):
             channel.status = ChannelStatus.PENDING
             downgraded = True
 
-        channel.save()
+        with transaction.atomic():
+            channel.save()
+            moved = channel_confirmed(actor, channel, previous_status=None)
 
         override_reason = form.cleaned_data.get("link_override_reason")
         write_audit(
@@ -160,7 +163,11 @@ def channel_create(request):
                 "Channel saved, but held at Pending: this student has no approved research submission yet.",
             )
         else:
-            messages.success(request, f"Added {channel.channel_name}.")
+            messages.success(
+                request,
+                f"Added {channel.channel_name}."
+                + (f" {channel.student.full_name} moved to Channel Created." if moved else ""),
+            )
         return redirect(channel.get_absolute_url())
 
     return render(request, "youtube/channel_form.html", {"form": form, "is_edit": False})
@@ -175,12 +182,22 @@ def channel_edit(request, pk):
 
     channel = get_object_or_404(YoutubeChannel.objects.for_actor(actor), pk=pk)
     before = snapshot(channel, AUDITED_CHANNEL_FIELDS)
+    previous_status = channel.status
     form = ChannelForm(
         request.POST or None, instance=channel, actor=actor, can_override=can(actor.role, "channel", "override")
     )
 
     if request.method == "POST" and form.is_valid():
-        channel = form.save()
+        channel = form.save(commit=False)
+        # Same rule as adding a channel (spec 23.3): it cannot be confirmed
+        # before the student's research is approved.
+        held = channel.status in CONFIRMED_STATUSES and not research_is_approved(channel.student)
+        if held:
+            channel.status = previous_status
+        with transaction.atomic():
+            channel.save()
+            form.save_m2m()
+            moved = channel_confirmed(actor, channel, previous_status)
         changed_before, changed_after = diff_fields(before, snapshot(channel, AUDITED_CHANNEL_FIELDS))
         write_audit(
             actor=actor,
@@ -192,7 +209,17 @@ def channel_edit(request, pk):
             after=changed_after,
             **current_request_meta(),
         )
-        messages.success(request, "Channel updated.")
+        if held:
+            messages.warning(
+                request,
+                "Channel updated, but its status was kept: this student has no approved research submission yet.",
+            )
+        else:
+            messages.success(
+                request,
+                "Channel updated."
+                + (f" {channel.student.full_name} moved to Channel Created." if moved else ""),
+            )
         return redirect(channel.get_absolute_url())
 
     return render(request, "youtube/channel_form.html", {"form": form, "is_edit": True, "channel": channel})

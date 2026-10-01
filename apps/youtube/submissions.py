@@ -14,7 +14,9 @@ from django.db import transaction
 
 from apps.academy.activity import record_activity
 from apps.core.audit import write_audit
-from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, NotificationChannel, SubmissionStatus, UserRole
+from apps.core.enums import (
+    ActivityKind, AuditAction, ChannelStatus, NotificationChannel, StudentStatus, SubmissionStatus, UserRole,
+)
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import assert_can
 from apps.youtube.models import YoutubeChannel
@@ -115,3 +117,63 @@ def _notify_staff(student, channel: YoutubeChannel) -> None:
             ),
             link_url=channel.get_absolute_url(),
         )
+
+
+# --- Staff confirming a channel ---------------------------------------------
+
+# A channel in any of these states has been confirmed by staff.
+CONFIRMED_STATUSES = (ChannelStatus.APPROVED, ChannelStatus.ACTIVE, ChannelStatus.MONETIZED)
+
+# Where the student is still waiting on a channel. A student further along —
+# or inactive, at risk, completed — is left exactly where staff put them.
+AWAITING_CHANNEL = (StudentStatus.RESEARCH_APPROVED, StudentStatus.CHANNEL_CREATION_PENDING)
+
+
+def research_is_approved(student) -> bool:
+    return student.research_submissions.filter(status=SubmissionStatus.APPROVED).exists()
+
+
+def channel_confirmed(actor, channel: YoutubeChannel, previous_status: str | None) -> bool:
+    """
+    Called after staff save a channel. When it has just become confirmed, moves
+    the student to Channel Created and tells them. Returns whether the student
+    moved.
+
+    Only a channel *entering* a confirmed state counts, so re-saving an already
+    approved channel never moves anyone, and a student is only ever moved
+    forward along the roadmap, never back.
+    """
+    from apps.academy.services import change_status
+    from apps.academy.status import can_transition
+
+    if channel.status not in CONFIRMED_STATUSES or previous_status in CONFIRMED_STATUSES:
+        return False
+
+    student = channel.student
+    _notify_student(student, channel)
+
+    if student.status not in AWAITING_CHANNEL or not can_transition(student.status, StudentStatus.CHANNEL_CREATED):
+        return False
+
+    # A consequence of a channel review staff are already authorized to make,
+    # so the student-update check is not repeated (see change_status).
+    change_status(
+        actor, student, StudentStatus.CHANNEL_CREATED,
+        reason=f'Channel "{channel.channel_name}" confirmed',
+        propagated=True,
+    )
+    return True
+
+
+def _notify_student(student, channel: YoutubeChannel) -> None:
+    from apps.monitoring.models import Notification
+
+    if not student.user_id:
+        return
+    Notification.objects.create(
+        user_id=student.user_id,
+        channel=NotificationChannel.IN_APP,
+        title=f"Channel confirmed: {channel.channel_name}",
+        body="Your instructor confirmed your channel. Its figures will appear once it has been synced.",
+        link_url=f"/portal/channels/{channel.pk}/",
+    )

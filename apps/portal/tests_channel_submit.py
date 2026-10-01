@@ -10,8 +10,9 @@ from datetime import date
 
 from django.test import TestCase
 
-from apps.academy.models import Batch, Student, StudentActivity
+from apps.academy.models import Batch, Student, StudentActivity, StudentStatusHistory
 from apps.accounts.models import User
+from apps.accounts.services import MFA_SESSION_KEY
 from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, StudentStatus, SubmissionStatus, UserRole
 from apps.core.models import AuditLog
 from apps.monitoring.models import Notification
@@ -197,3 +198,115 @@ class ChannelSubmitTests(TestCase):
         response = self.client.get(f"/channels/{channel.pk}/")
         self.assertContains(response, "Awaiting review")
         self.assertContains(response, f"/channels/{channel.pk}/edit/")
+
+
+class ChannelConfirmedMovesStudentTests(TestCase):
+    """Staff confirming a channel moves the student to Channel Created — forward only."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            email="admin@example.test", password="admin-pw-12345", role=UserRole.SUPER_ADMIN, full_name="Admin",
+        )
+        self.instructor = User.objects.create_user(
+            email="tutor@example.test", password="tutor-pw-12345", role=UserRole.INSTRUCTOR, full_name="Tutor",
+        )
+        self.user = User.objects.create_user(
+            email="asha@example.test", password="student-pw-12345", role=UserRole.STUDENT, full_name="Asha",
+        )
+        batch = Batch.objects.create(code="B-1", name="Batch 1", start_date=date(2026, 1, 1))
+        self.student = Student.objects.create(
+            enrollment_id="100DAI-2026-0001", full_name="Asha", email="asha@example.test",
+            enrollment_date=date(2026, 1, 5), batch=batch, instructor=self.instructor, user=self.user,
+            status=StudentStatus.RESEARCH_APPROVED,
+        )
+        ResearchSubmission.objects.create(
+            student=self.student, version=1, status=SubmissionStatus.APPROVED, niche="Personal finance",
+        )
+        self.channel = YoutubeChannel.objects.create(
+            student=self.student, channel_name="Money Made Simple", status=ChannelStatus.UNDER_REVIEW,
+            channel_url="https://www.youtube.com/@moneymadesimple",
+        )
+        self.client.force_login(self.instructor)
+
+    def edit(self, status, channel=None):
+        channel = channel or self.channel
+        return self.client.post(f"/channels/{channel.pk}/edit/", {
+            "student": channel.student.pk, "channel_name": channel.channel_name,
+            "channel_url": channel.channel_url or "", "content_type": "MIXED",
+            "status": status, "monetization_status": "UNKNOWN",
+        }, follow=True)
+
+    def history(self):
+        return StudentStatusHistory.objects.filter(student=self.student, to_status=StudentStatus.CHANNEL_CREATED)
+
+    def test_approving_the_channel_moves_the_student_to_channel_created(self):
+        response = self.edit(ChannelStatus.APPROVED)
+        self.assertContains(response, "moved to Channel Created")
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, StudentStatus.CHANNEL_CREATED)
+        self.assertEqual(self.student.roadmap_stage, "CHANNEL_CREATION")
+        entry = self.history().get()
+        self.assertEqual(entry.changed_by, self.instructor)
+        self.assertIn("Money Made Simple", entry.reason)
+
+    def test_the_student_is_told(self):
+        self.edit(ChannelStatus.ACTIVE)
+        note = Notification.objects.get(user=self.user)
+        self.assertIn("Channel confirmed", note.title)
+        self.assertEqual(note.link_url, f"/portal/channels/{self.channel.pk}/")
+
+    def test_from_channel_creation_pending_too(self):
+        self.student.status = StudentStatus.CHANNEL_CREATION_PENDING
+        self.student.save()
+        self.edit(ChannelStatus.APPROVED)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, StudentStatus.CHANNEL_CREATED)
+
+    def test_re_saving_a_confirmed_channel_moves_no_one_again(self):
+        self.edit(ChannelStatus.APPROVED)
+        self.edit(ChannelStatus.ACTIVE)
+        self.edit(ChannelStatus.MONETIZED)
+        self.assertEqual(self.history().count(), 1)
+        self.assertEqual(Notification.objects.filter(user=self.user).count(), 1)
+
+    def test_states_short_of_confirmed_move_no_one(self):
+        for status in (ChannelStatus.PENDING, ChannelStatus.UNDER_REVIEW, ChannelStatus.INACTIVE):
+            self.edit(status)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, StudentStatus.RESEARCH_APPROVED)
+
+    def test_a_student_further_along_or_flagged_is_left_alone(self):
+        for status in (StudentStatus.CONTENT_PRODUCTION_STARTED, StudentStatus.AT_RISK, StudentStatus.INACTIVE):
+            with self.subTest(status=status):
+                self.student.status = status
+                self.student.save()
+                self.channel.status = ChannelStatus.UNDER_REVIEW
+                self.channel.save()
+                self.edit(ChannelStatus.APPROVED)
+                self.student.refresh_from_db()
+                self.assertEqual(self.student.status, status)
+        self.assertFalse(self.history().exists())
+
+    def test_a_channel_cannot_be_confirmed_on_edit_without_approved_research(self):
+        ResearchSubmission.objects.update(status=SubmissionStatus.REVISION_REQUESTED)
+        response = self.edit(ChannelStatus.APPROVED)
+        self.assertContains(response, "its status was kept")
+        self.channel.refresh_from_db()
+        self.student.refresh_from_db()
+        self.assertEqual(self.channel.status, ChannelStatus.UNDER_REVIEW)
+        self.assertEqual(self.student.status, StudentStatus.RESEARCH_APPROVED)
+
+    def test_adding_a_channel_already_active_from_the_console_also_moves_the_student(self):
+        self.channel.delete()
+        # Only an administrator adds channels from the console.
+        self.client.force_login(self.admin)
+        session = self.client.session
+        session[MFA_SESSION_KEY] = True
+        session.save()
+        response = self.client.post("/channels/new/", {
+            "student": self.student.pk, "channel_name": "Second Go", "content_type": "MIXED",
+            "status": ChannelStatus.ACTIVE, "monetization_status": "UNKNOWN",
+        }, follow=True)
+        self.assertContains(response, "moved to Channel Created")
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.status, StudentStatus.CHANNEL_CREATED)
