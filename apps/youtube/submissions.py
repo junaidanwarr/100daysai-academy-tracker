@@ -174,6 +174,13 @@ def _notify_student(student, channel: YoutubeChannel) -> None:
         user_id=student.user_id,
         channel=NotificationChannel.IN_APP,
         title=f"Channel confirmed: {channel.channel_name}",
-        body="Your instructor confirmed your channel. Its figures will appear once it has been synced.",
+        body=(
+            "Your instructor confirmed your channel."
+            + (
+                " Its figures appear on your channel page after each sync."
+                if channel.youtube_channel_id
+                else " Figures appear once its channel ID has been recorded."
+            )
+        ),
         link_url=f"/portal/channels/{channel.pk}/",
     )

@@ -317,7 +317,7 @@ def channel_submit(request, student):
         else:
             messages.success(
                 request,
-                f"{channel.channel_name} submitted. Your instructor will check it and confirm it here.",
+                f"{channel.channel_name} submitted. Your instructor will check it and confirm it.",
             )
             return redirect("portal:channel_detail", pk=channel.pk)
 

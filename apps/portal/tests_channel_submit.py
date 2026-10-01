@@ -90,7 +90,10 @@ class ChannelSubmitTests(TestCase):
         self.assertEqual(channel.youtube_channel_id, CHANNEL_ID)
         self.assertEqual(channel.niche, "Personal finance")
         self.assertEqual(channel.sub_niche, "Budgeting for students")
-        self.assertContains(self.client.get(f"/portal/channels/{channel.pk}/"), "Your instructor is checking")
+        page = self.client.get(f"/portal/channels/{channel.pk}/")
+        self.assertContains(page, "Your instructor is checking")
+        # With an ID, sync does not wait for the review, so the page must not claim it does.
+        self.assertContains(page, "does not wait for the review")
 
     def test_staff_only_fields_cannot_be_set_by_the_student(self):
         self.approve_research()
@@ -105,7 +108,9 @@ class ChannelSubmitTests(TestCase):
     def test_the_channel_id_is_optional(self):
         self.approve_research()
         self.client.post("/portal/channels/new/", valid_post(youtube_channel_id=""))
-        self.assertIsNone(YoutubeChannel.objects.get().youtube_channel_id)
+        channel = YoutubeChannel.objects.get()
+        self.assertIsNone(channel.youtube_channel_id)
+        self.assertContains(self.client.get(f"/portal/channels/{channel.pk}/"), "once its channel ID is recorded")
 
     def test_the_instructor_is_notified_and_it_is_recorded(self):
         self.approve_research()
