@@ -6,7 +6,7 @@
 <div class="page-header">
   <div><h1>Notifications</h1></div>
   <form method="post">{% csrf_token %}
-    <button type="submit" class="btn-secondary">Mark all as read</button>
+    <button type="submit" class="btn-secondary">{% icon "check" %} Mark all as read</button>
   </form>
 </div>
 
@@ -48,8 +48,8 @@
         {% for row in delivery %}
           <li class="list-row">
             <div>
-              <p class="detail-value">{{ row.channel|title }}</p>
-              <p class="tiny">{{ row.delivery_status|title }}</p>
+              <p class="detail-value">{{ row.channel|humanize_enum }}</p>
+              <p class="tiny">{{ row.delivery_status|humanize_enum }}</p>
             </div>
             <strong>{{ row.n }}</strong>
           </li>

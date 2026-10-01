@@ -33,7 +33,7 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn-primary">Filter</button>
+    <button type="submit" class="btn-primary">{% icon "filter" %} Filter</button>
   </form>
 
   {% if page_obj.object_list %}
@@ -81,11 +81,11 @@
     </ul>
 
     {% if page_obj.paginator.num_pages > 1 %}
-      <div class="flex items-center justify-between" style="padding:0.75rem 1rem;border-top:1px solid var(--slate-100)">
+      <div class="pagination">
         <p class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</p>
         <div class="flex gap-1">
-          {% if page_obj.has_previous %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
-          {% if page_obj.has_next %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+          {% if page_obj.has_previous %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.previous_page_number }}">{% icon "chevron-left" %} Previous</a>{% endif %}
+          {% if page_obj.has_next %}<a class="btn-secondary btn-sm" href="?page={{ page_obj.next_page_number }}">Next {% icon "chevron-right" %}</a>{% endif %}
         </div>
       </div>
     {% endif %}

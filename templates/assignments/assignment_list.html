@@ -11,7 +11,7 @@
       never erase feedback already given.
     </p>
   </div>
-  {% if can_create %}<a href="{% url 'assignments:assignment_create' %}" class="btn-primary">New assignment</a>{% endif %}
+  {% if can_create %}<a href="{% url 'assignments:assignment_create' %}" class="btn-primary">{% icon "plus" %} New assignment</a>{% endif %}
 </div>
 
 <section class="grid grid-stats">
@@ -50,7 +50,7 @@
           {% endfor %}
         </select>
       </div>
-      <button type="submit" class="btn-primary">Search</button>
+      <button type="submit" class="btn-primary">{% icon "search" %} Search</button>
     </form>
 
     {% if submissions %}

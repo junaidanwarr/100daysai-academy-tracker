@@ -12,7 +12,7 @@
   </div>
   {% if can_scan %}
     <form method="post" action="{% url 'monitoring:alert_scan' %}">{% csrf_token %}
-      <button type="submit" class="btn-secondary">Run scan now</button>
+      <button type="submit" class="btn-secondary">{% icon "radar" %} Run scan now</button>
     </form>
   {% endif %}
 </div>
@@ -50,7 +50,7 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn-primary">Filter</button>
+    <button type="submit" class="btn-primary">{% icon "filter" %} Filter</button>
   </form>
 
   {% if alerts %}

@@ -11,7 +11,7 @@
       {% else %}{{ page_obj.paginator.count }} student{{ page_obj.paginator.count|pluralize }} in view.{% endif %}
     </p>
   </div>
-  {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary">Enroll student</a>{% endif %}
+  {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary">{% icon "user-plus" %} Enroll student</a>{% endif %}
 </div>
 
 <div class="grid grid-sidebar">
@@ -22,7 +22,7 @@
       <a class="nav-link {% if filters.preset == preset.key %}active{% endif %}"
          href="{% url 'academy:student_list' %}?preset={{ preset.key }}" title="{{ preset.description }}">
         <span>{{ preset.label }}</span>
-        <span class="nav-badge" style="background:var(--slate-200);color:var(--slate-700)">
+        <span class="nav-badge nav-badge-neutral">
           {{ preset_counts|get_item:preset.key }}
         </span>
       </a>
@@ -55,7 +55,7 @@
         </select>
       </div>
       {% if filters.preset %}<input type="hidden" name="preset" value="{{ filters.preset }}">{% endif %}
-      <button type="submit" class="btn-primary">Search</button>
+      <button type="submit" class="btn-primary">{% icon "search" %} Search</button>
       {% if filters.search or filters.batch or filters.status or filters.preset %}
         <a href="{% url 'academy:student_list' %}" class="btn-secondary">Clear</a>
       {% endif %}
@@ -96,14 +96,14 @@
       </div>
 
       {% if page_obj.paginator.num_pages > 1 %}
-        <div class="flex items-center justify-between" style="padding:0.75rem 1rem;border-top:1px solid var(--slate-100)">
+        <div class="pagination">
           <p class="muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} · {{ page_obj.paginator.count }} total</p>
           <div class="flex gap-1">
             {% if page_obj.has_previous %}
-              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.previous_page_number }}">{% icon "chevron-left" %} Previous</a>
             {% endif %}
             {% if page_obj.has_next %}
-              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+              <a class="btn-secondary btn-sm" href="?{% if filters.preset %}preset={{ filters.preset }}&{% endif %}page={{ page_obj.next_page_number }}">Next {% icon "chevron-right" %}</a>
             {% endif %}
           </div>
         </div>
@@ -115,7 +115,7 @@
           {% if filters.search or filters.preset %}Try clearing the filters or searching for a different term.
           {% else %}Enroll your first student to start tracking the roadmap.{% endif %}
         </p>
-        {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary mt-2">Enroll student</a>{% endif %}
+        {% if can_create %}<a href="{% url 'academy:student_create' %}" class="btn-primary mt-2">{% icon "user-plus" %} Enroll student</a>{% endif %}
       </div>
     {% endif %}
   </div>

@@ -15,7 +15,7 @@
   </div>
   <div class="flex gap-1 items-center">
     {% if not assignment.is_active %}{% tone_badge "Closed" "slate" %}{% elif assignment.is_past_due %}{% tone_badge "Past due" "amber" %}{% else %}{% tone_badge "Open" "emerald" %}{% endif %}
-    {% if can_edit %}<a href="{% url 'assignments:assignment_edit' assignment.pk %}" class="btn-secondary">Edit</a>{% endif %}
+    {% if can_edit %}<a href="{% url 'assignments:assignment_edit' assignment.pk %}" class="btn-secondary">{% icon "pencil" %} Edit</a>{% endif %}
   </div>
 </div>
 
@@ -47,7 +47,7 @@
           <option value="missing" {% if state == "missing" %}selected{% endif %}>Not submitted</option>
         </select>
       </div>
-      <noscript><button type="submit" class="btn-primary">Filter</button></noscript>
+      <noscript><button type="submit" class="btn-primary">{% icon "filter" %} Filter</button></noscript>
     </form>
 
     {% if rows %}

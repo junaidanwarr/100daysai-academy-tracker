@@ -11,7 +11,7 @@
     </p>
   </div>
   {% if can_configure %}
-    <a href="{% url 'research:criteria' %}" class="btn-secondary">Evaluation criteria</a>
+    <a href="{% url 'research:criteria' %}" class="btn-secondary">{% icon "list-checks" %} Evaluation criteria</a>
   {% endif %}
 </div>
 
@@ -54,7 +54,7 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn-primary">Filter</button>
+    <button type="submit" class="btn-primary">{% icon "filter" %} Filter</button>
   </form>
 
   {% if submissions %}

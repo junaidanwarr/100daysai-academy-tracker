@@ -20,9 +20,9 @@
     <p class="mt-2">{{ summary }}</p>
 
     <p class="detail-label mt-3">What this section will do</p>
-    <ul class="list" style="margin-top:0.5rem">
+    <ul class="checklist mt-1">
       {% for item in will_include %}
-        <li style="padding:0.25rem 0;border:none">• {{ item }}</li>
+        <li>{{ item }}</li>
       {% endfor %}
     </ul>
 

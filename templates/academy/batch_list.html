@@ -10,7 +10,7 @@
       Academy-wide research window is {{ default_research_days }} days. A batch may override it.
     </p>
   </div>
-  {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary">New batch</a>{% endif %}
+  {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary">{% icon "plus" %} New batch</a>{% endif %}
 </div>
 
 <div class="card">
@@ -47,7 +47,7 @@
     <div class="empty">
       <p class="empty-title">No batches yet</p>
       <p class="empty-description">Create a batch before enrolling students — every student must belong to one.</p>
-      {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary mt-2">New batch</a>{% endif %}
+      {% if can_create %}<a href="{% url 'academy:batch_create' %}" class="btn-primary mt-2">{% icon "plus" %} New batch</a>{% endif %}
     </div>
   {% endif %}
 </div>

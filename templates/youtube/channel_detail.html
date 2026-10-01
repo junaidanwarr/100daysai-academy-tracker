@@ -15,10 +15,10 @@
     {% if can_update and channel.youtube_channel_id and sync_configured %}
       <form method="post" action="{% url 'youtube:channel_sync' channel.pk %}">
         {% csrf_token %}
-        <button type="submit" class="btn-secondary">Sync now</button>
+        <button type="submit" class="btn-secondary">{% icon "refresh-cw" %} Sync now</button>
       </form>
     {% endif %}
-    {% if can_update %}<a href="{% url 'youtube:channel_edit' channel.pk %}" class="btn-secondary">Edit</a>{% endif %}
+    {% if can_update %}<a href="{% url 'youtube:channel_edit' channel.pk %}" class="btn-secondary">{% icon "pencil" %} Edit</a>{% endif %}
   </div>
 </div>
 
@@ -180,7 +180,7 @@
           {% if can_update %}
             <form method="post" action="{% url 'youtube:analytics_disconnect' channel.pk %}" class="mt-2">
               {% csrf_token %}
-              <button type="submit" class="btn-secondary">Disconnect analytics</button>
+              <button type="submit" class="btn-secondary">{% icon "unlink" %} Disconnect analytics</button>
               <p class="tiny mt-1">
                 Disconnecting stops new private metrics immediately. Figures already collected are kept
                 as a record of what was true at the time.

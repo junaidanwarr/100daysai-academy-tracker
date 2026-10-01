@@ -10,7 +10,7 @@
       {{ channels|length }} channel{{ channels|length|pluralize }} recorded. A student may hold more than one.
     </p>
   </div>
-  {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary">Add channel</a>{% endif %}
+  {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary">{% icon "plus" %} Add channel</a>{% endif %}
 </div>
 
 <div class="card">
@@ -29,7 +29,7 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn-primary">Search</button>
+    <button type="submit" class="btn-primary">{% icon "search" %} Search</button>
   </form>
 
   {% if channels %}
@@ -79,7 +79,7 @@
       <p class="empty-description">
         Channels can be recorded manually now. From Phase 3 they also sync from the YouTube Data API.
       </p>
-      {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary mt-2">Add channel</a>{% endif %}
+      {% if can_create %}<a href="{% url 'youtube:channel_create' %}" class="btn-primary mt-2">{% icon "plus" %} Add channel</a>{% endif %}
     </div>
   {% endif %}
 </div>

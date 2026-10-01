@@ -5,6 +5,7 @@
 {% block content %}
 <div class="page-header">
   <div>
+    <p class="eyebrow">My roadmap</p>
     <h1>{{ student.full_name }}</h1>
     <p class="page-description">
       {{ student.enrollment_id }}{% if student.batch %} · {{ student.batch }}{% endif %}
@@ -36,24 +37,24 @@
   </div>
 {% endif %}
 
-<div class="card">
+<div class="card roadmap-card">
   <div class="card-header">
     <div>
-      <h2>My roadmap</h2>
+      <h2 class="flex items-center gap-1">{% icon "map" %} My roadmap</h2>
       <p>Where you are in the programme.</p>
     </div>
+    <div class="text-right"><span class="roadmap-percent">{{ student.progress_percent }}%</span><p>completed</p></div>
   </div>
   <div class="card-body">
-    <div class="progress-labels"><span>Journey completed</span><span>{{ student.progress_percent }}%</span></div>
-    <div class="progress"><div class="progress-fill" style="width: {{ student.progress_percent }}%"></div></div>
+    <div class="progress" role="progressbar" aria-label="Journey completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ student.progress_percent }}"><div class="progress-fill" style="width: {{ student.progress_percent }}%"></div></div>
 
-    <div class="grid mt-2" style="grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:0.5rem">
+    <ol class="stage-list mt-2">
       {% for stage in stages %}
-        <div class="stage-pill {% if stage.done %}done{% elif stage.current %}current{% endif %}">
-          {% if stage.done %}✓ {% endif %}{{ stage.label }}
-        </div>
+        <li class="stage-pill {% if stage.done %}done{% elif stage.current %}current{% endif %}"{% if stage.current %} aria-current="step"{% endif %}>
+          {% if stage.done %}{% icon "circle-check" "" "sm" %}<span class="visually-hidden">Done: </span>{% elif stage.current %}<span class="visually-hidden">Current: </span>{% endif %}{{ stage.label }}
+        </li>
       {% endfor %}
-    </div>
+    </ol>
 
     {% if student.research_deadline %}
       <p class="muted mt-2 mb-0">Research due {{ student.research_deadline|date:"d M Y" }}</p>
@@ -63,12 +64,12 @@
 
 <div class="grid grid-stats mt-2">
   <div class="stat">
-    <p class="stat-label">Research attempts</p>
+    <div class="stat-head"><p class="stat-label">Research attempts</p><span class="stat-icon brand">{% icon "file-search" %}</span></div>
     <p class="stat-value">{{ submission_count }}</p>
     <p class="stat-hint">Every attempt is kept, with its feedback.</p>
   </div>
   <div class="stat">
-    <p class="stat-label">Assignments to hand in</p>
+    <div class="stat-head"><p class="stat-label">Assignments to hand in</p><span class="stat-icon {% if assignments_overdue %}warning{% else %}brand{% endif %}">{% icon "clipboard-list" %}</span></div>
     <p class="stat-value {% if assignments_overdue %}warning{% endif %}"><a href="{% url 'portal:assignments' %}" style="color:inherit">{{ assignments_to_do }}</a></p>
     <p class="stat-hint">
       {% if assignments_overdue %}{{ assignments_overdue }} overdue. {% endif %}
@@ -76,7 +77,7 @@
     </p>
   </div>
   <div class="stat">
-    <p class="stat-label">My channels</p>
+    <div class="stat-head"><p class="stat-label">My channels</p><span class="stat-icon brand">{% icon "monitor-play" %}</span></div>
     <p class="stat-value">{{ channels|length }}</p>
     <p class="stat-hint">Recorded by your instructor after approval.</p>
   </div>
@@ -122,7 +123,7 @@
     <a href="{% url 'portal:activity' %}" class="btn-secondary btn-sm">See everything</a>
   </div>
   {% if recent_activity %}
-    <ol class="list" style="list-style:none">
+    <ol class="list">
       {% for a in recent_activity %}{% include "academy/_activity_item.html" with a=a portal=True %}{% endfor %}
     </ol>
   {% else %}
@@ -134,8 +135,13 @@
   <div class="card-header"><div><h2>My instructor</h2></div></div>
   <div class="card-body">
     {% if student.instructor %}
-      <p class="detail-value mb-0">{{ student.instructor.full_name }}</p>
-      <p class="muted mb-0">{{ student.instructor.email }}</p>
+      <div class="flex items-center gap-2">
+        <span class="avatar" aria-hidden="true">{{ student.instructor.initials }}</span>
+        <div>
+          <p class="detail-value mb-0">{{ student.instructor.full_name }}</p>
+          <p class="muted mb-0"><a href="mailto:{{ student.instructor.email }}">{{ student.instructor.email }}</a></p>
+        </div>
+      </div>
     {% else %}
       <p class="muted mb-0">No instructor assigned yet.</p>
     {% endif %}
