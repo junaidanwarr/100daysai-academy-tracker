@@ -11,7 +11,7 @@
       disabling one re-spreads its weight rather than capping the achievable total.
     </p>
   </div>
-  <a href="{% url 'research:submission_list' %}" class="btn-secondary">Back to research</a>
+  <a href="{% url 'research:submission_list' %}" class="btn-secondary">{% icon "arrow-left" %} Back to research</a>
 </div>
 
 {% if not editable %}
@@ -106,7 +106,7 @@
 
         {% if editable %}
           <details>
-            <summary class="btn-secondary" style="display:inline-block;cursor:pointer">Add criterion</summary>
+            <summary class="btn-secondary" style="display:inline-flex;cursor:pointer">{% icon "plus" %} Add criterion</summary>
             <form method="post" class="mt-2" style="border:1px dashed var(--slate-300);border-radius:var(--radius);padding:0.75rem">
               {% csrf_token %}
               <input type="hidden" name="criteria_set" value="{{ group.set.pk }}">
@@ -129,7 +129,7 @@
                   <label class="flex items-center gap-1 tiny mb-0"><input type="checkbox" name="is_active" checked> Active</label>
                 </div>
               </div>
-              <button type="submit" class="btn-primary btn-sm">Add criterion</button>
+              <button type="submit" class="btn-primary btn-sm">{% icon "plus" %} Add criterion</button>
             </form>
           </details>
         {% endif %}

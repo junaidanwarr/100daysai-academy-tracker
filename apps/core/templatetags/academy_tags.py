@@ -1,7 +1,8 @@
 """Template helpers for badges, charts and honest empty values."""
 
 from django import template
-from django.utils.safestring import mark_safe
+from django.templatetags.static import static
+from django.utils.html import format_html
 
 from apps.academy.status import STATUS_TONES
 from apps.core.enums import AlertPriority, AlertStatus, ChannelStatus, SubmissionStatus
@@ -57,7 +58,30 @@ AUDIT_TONES = {
 
 
 def _badge(label: str, tone: str) -> str:
-    return mark_safe(f'<span class="badge badge-{tone}">{label}</span>')
+    # Labels can carry user-entered text (activity kinds, roster states), so
+    # they are escaped rather than trusted.
+    return format_html('<span class="badge badge-{}">{}</span>', tone, label)
+
+
+@register.simple_tag
+def icon(name, label="", size=""):
+    """
+    `{% icon "bell" %}` — one Lucide symbol from the static sprite.
+
+    Decorative by default (hidden from screen readers, since the visible text
+    beside it already says what it means). Pass `label` when the icon stands
+    alone and carries the meaning itself.
+    """
+    size_class = f" icon-{size}" if size else ""
+    if label:
+        return format_html(
+            '<svg class="icon{}" role="img" aria-label="{}"><use href="{}#{}"></use></svg>',
+            size_class, label, static("icons/sprite.svg"), name,
+        )
+    return format_html(
+        '<svg class="icon{}" aria-hidden="true" focusable="false"><use href="{}#{}"></use></svg>',
+        size_class, static("icons/sprite.svg"), name,
+    )
 
 
 @register.simple_tag
@@ -126,6 +150,13 @@ def dash(value):
     if value is None or value == "":
         return "—"
     return value
+
+
+@register.filter
+def humanize_enum(value):
+    """`RESEARCH_IN_PROGRESS` → `Research in progress`, for raw choice values in charts."""
+    text = str(value or "").replace("_", " ").strip().lower()
+    return text[:1].upper() + text[1:]
 
 
 @register.filter

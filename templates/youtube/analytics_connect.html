@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load academy_tags %}
 {% block title %}Connect analytics · {{ channel.channel_name }}{% endblock %}
 
 {% block content %}
@@ -47,7 +48,7 @@
       {% if oauth_configured %}
         <form method="post" class="mt-2">
           {% csrf_token %}
-          <button type="submit" class="btn-primary">Continue to Google</button>
+          <button type="submit" class="btn-primary">{% icon "external-link" %} Continue to Google</button>
           <a href="{{ channel.get_absolute_url }}" class="btn-secondary">Cancel</a>
         </form>
         <p class="tiny mt-1">

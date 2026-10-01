@@ -16,16 +16,16 @@ from apps.core.permissions import can_access
 from apps.core.enums import UserRole
 
 PORTAL_NAV_ITEMS: list[NavItem] = [
-    NavItem("My roadmap", "portal:overview", "student", 1, "My progress"),
-    NavItem("My research", "portal:research", "research", 2, "My progress"),
-    NavItem("My assignments", "portal:assignments", "assignment", 2, "My progress"),
-    NavItem("My activity", "portal:activity", "student", 1, "My progress"),
-    NavItem("My channels", "portal:channels", "channel", 1, "My channel"),
-    NavItem("My videos", "portal:videos", "video", 3, "My channel"),
-    NavItem("My analytics", "portal:analytics", "analytics", 3, "My channel"),
-    NavItem("Notifications", "portal:notifications", "notification", 1, "Account"),
-    NavItem("My agreement", "portal:agreements", "agreement", 5, "Account", delivered=False),
-    NavItem("Raise a concern", "portal:grievances", "grievance", 5, "Account", delivered=False),
+    NavItem("My roadmap", "portal:overview", "student", 1, "My progress", icon="map"),
+    NavItem("My research", "portal:research", "research", 2, "My progress", icon="file-search"),
+    NavItem("My assignments", "portal:assignments", "assignment", 2, "My progress", icon="clipboard-list"),
+    NavItem("My activity", "portal:activity", "student", 1, "My progress", icon="activity"),
+    NavItem("My channels", "portal:channels", "channel", 1, "My channel", icon="monitor-play"),
+    NavItem("My videos", "portal:videos", "video", 3, "My channel", icon="clapperboard"),
+    NavItem("My analytics", "portal:analytics", "analytics", 3, "My channel", icon="chart-column"),
+    NavItem("Notifications", "portal:notifications", "notification", 1, "Account", icon="bell"),
+    NavItem("My agreement", "portal:agreements", "agreement", 5, "Account", delivered=False, icon="signature"),
+    NavItem("Raise a concern", "portal:grievances", "grievance", 5, "Account", delivered=False, icon="message-square-warning"),
 ]
 
 PORTAL_NAV_GROUPS = ["My progress", "My channel", "Account"]

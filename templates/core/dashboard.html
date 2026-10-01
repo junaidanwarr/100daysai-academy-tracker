@@ -6,59 +6,114 @@
 {% with c=counters %}
 <div class="page-header">
   <div>
+    <p class="eyebrow">Dashboard</p>
     <h1>Welcome back, {{ user.get_short_name }}</h1>
     <p class="page-description">{{ scope_note }}</p>
   </div>
+  <div class="flex gap-1">
+    <a href="{% url 'monitoring:alert_list' %}" class="btn-secondary">{% icon "triangle-alert" %} Alerts</a>
+    <a href="{% url 'academy:student_list' %}" class="btn-primary">{% icon "users" %} Students</a>
+  </div>
 </div>
 
-<section class="grid grid-stats" aria-label="Key figures">
-  <a class="stat" href="{% url 'academy:student_list' %}">
-    <p class="stat-label">Total students</p><p class="stat-value">{{ c.total_students }}</p>
-  </a>
-  <div class="stat"><p class="stat-label">Active</p><p class="stat-value success">{{ c.active_students }}</p></div>
-  <div class="stat"><p class="stat-label">In research</p><p class="stat-value">{{ c.in_research }}</p></div>
-  <div class="stat"><p class="stat-label">Pending review</p><p class="stat-value {% if c.pending_review %}warning{% endif %}">{{ c.pending_review }}</p></div>
+{% comment %}
+  Ordered by what a person should act on: first the figures that mean someone
+  needs help, then the cohort, research and channel pipeline in roadmap order.
+{% endcomment %}
+<h2 class="section-title">{% icon "circle-alert" "" "sm" %} Needs attention</h2>
+<section class="grid grid-stats" aria-label="Needs attention">
   <a class="stat" href="{% url 'academy:student_list' %}?preset=research-overdue">
-    <p class="stat-label">Overdue research</p><p class="stat-value {% if c.overdue_deadlines %}danger{% endif %}">{{ c.overdue_deadlines }}</p>
+    <div class="stat-head"><p class="stat-label">Overdue research</p><span class="stat-icon {% if c.overdue_deadlines %}danger{% endif %}">{% icon "hourglass" %}</span></div>
+    <p class="stat-value {% if c.overdue_deadlines %}danger{% endif %}">{{ c.overdue_deadlines }}</p>
   </a>
   <a class="stat" href="{% url 'academy:student_list' %}?preset=at-risk">
-    <p class="stat-label">At risk</p><p class="stat-value {% if c.at_risk %}danger{% endif %}">{{ c.at_risk }}</p>
+    <div class="stat-head"><p class="stat-label">At risk</p><span class="stat-icon {% if c.at_risk %}danger{% endif %}">{% icon "circle-alert" %}</span></div>
+    <p class="stat-value {% if c.at_risk %}danger{% endif %}">{{ c.at_risk }}</p>
   </a>
-  <a class="stat" href="{% url 'youtube:channel_list' %}">
-    <p class="stat-label">Channels created</p><p class="stat-value">{{ c.channels_created }}</p>
+  <a class="stat" href="{% url 'monitoring:alert_list' %}">
+    <div class="stat-head"><p class="stat-label">Open alerts</p><span class="stat-icon {% if c.open_alerts %}danger{% else %}success{% endif %}">{% icon "triangle-alert" %}</span></div>
+    <p class="stat-value {% if c.open_alerts %}danger{% else %}success{% endif %}">{{ c.open_alerts }}</p>
   </a>
-  <div class="stat"><p class="stat-label">Active channels</p><p class="stat-value success">{{ c.active_channels }}</p></div>
-  <div class="stat"><p class="stat-label">Monetized</p><p class="stat-value brand">{{ c.monetized_channels }}</p></div>
-  <div class="stat"><p class="stat-label">Videos published</p><p class="stat-value">{{ c.total_videos }}</p></div>
+  <div class="stat">
+    <div class="stat-head"><p class="stat-label">Pending review</p><span class="stat-icon {% if c.pending_review %}warning{% endif %}">{% icon "list-checks" %}</span></div>
+    <p class="stat-value {% if c.pending_review %}warning{% endif %}">{{ c.pending_review }}</p>
+  </div>
   <a class="stat" href="{% url 'academy:student_list' %}?preset=upload-target-missed">
-    <p class="stat-label">No recent uploads</p>
+    <div class="stat-head"><p class="stat-label">No recent uploads</p><span class="stat-icon {% if c.no_recent_uploads %}warning{% endif %}">{% icon "upload" %}</span></div>
     <p class="stat-value {% if c.no_recent_uploads %}warning{% endif %}">{{ c.no_recent_uploads }}</p>
     <p class="stat-hint">Over {{ no_upload_days }} days</p>
   </a>
   <a class="stat" href="{% url 'academy:student_list' %}?preset=inactive">
-    <p class="stat-label">Inactive students</p>
+    <div class="stat-head"><p class="stat-label">Inactive students</p><span class="stat-icon {% if c.inactive_students %}warning{% endif %}">{% icon "clock" %}</span></div>
     <p class="stat-value {% if c.inactive_students %}warning{% endif %}">{{ c.inactive_students }}</p>
     <p class="stat-hint">Over {{ inactivity_days }} days</p>
   </a>
-  <a class="stat" href="{% url 'monitoring:alert_list' %}">
-    <p class="stat-label">Open alerts</p><p class="stat-value {% if c.open_alerts %}danger{% else %}success{% endif %}">{{ c.open_alerts }}</p>
-  </a>
-  <div class="stat"><p class="stat-label">Research approved</p><p class="stat-value success">{{ c.research_approved }}</p></div>
-  <div class="stat"><p class="stat-label">Research rejected</p><p class="stat-value warning">{{ c.research_rejected }}</p></div>
-  <div class="stat"><p class="stat-label">Batch completed</p><p class="stat-value brand">{{ c.completed }}</p></div>
-  <div class="stat">
-    <p class="stat-label">Approval rate</p>
-    <p class="stat-value">{{ research_approval_rate|dash }}{% if research_approval_rate is not None %}%{% endif %}</p>
-    {% if research_approval_rate is None %}<p class="stat-hint">Nothing reviewed yet</p>{% endif %}
-  </div>
-  <div class="stat">
-    <p class="stat-label">Channel creation</p>
-    <p class="stat-value">{{ channel_creation_rate|dash }}{% if channel_creation_rate is not None %}%{% endif %}</p>
-    {% if channel_creation_rate is None %}<p class="stat-hint">No students yet</p>{% endif %}
-  </div>
 </section>
 
-<section class="grid grid-2 mt-2">
+<div class="grid grid-2 mt-1">
+  <div>
+    <h2 class="section-title">{% icon "graduation-cap" "" "sm" %} Cohort &amp; research</h2>
+    <section class="grid grid-stats" aria-label="Cohort and research">
+      <a class="stat" href="{% url 'academy:student_list' %}">
+        <div class="stat-head"><p class="stat-label">Total students</p><span class="stat-icon brand">{% icon "users" %}</span></div>
+        <p class="stat-value">{{ c.total_students }}</p>
+      </a>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Active</p><span class="stat-icon success">{% icon "activity" %}</span></div>
+        <p class="stat-value success">{{ c.active_students }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">In research</p><span class="stat-icon">{% icon "file-search" %}</span></div>
+        <p class="stat-value">{{ c.in_research }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Research approved</p><span class="stat-icon success">{% icon "circle-check" %}</span></div>
+        <p class="stat-value success">{{ c.research_approved }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Research rejected</p><span class="stat-icon warning">{% icon "circle-x" %}</span></div>
+        <p class="stat-value warning">{{ c.research_rejected }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Approval rate</p><span class="stat-icon">{% icon "target" %}</span></div>
+        <p class="stat-value">{{ research_approval_rate|dash }}{% if research_approval_rate is not None %}%{% endif %}</p>
+        {% if research_approval_rate is None %}<p class="stat-hint">Nothing reviewed yet</p>{% endif %}
+      </div>
+    </section>
+  </div>
+  <div>
+    <h2 class="section-title">{% icon "monitor-play" "" "sm" %} Channels &amp; completion</h2>
+    <section class="grid grid-stats" aria-label="Channels and completion">
+      <a class="stat" href="{% url 'youtube:channel_list' %}">
+        <div class="stat-head"><p class="stat-label">Channels created</p><span class="stat-icon brand">{% icon "monitor-play" %}</span></div>
+        <p class="stat-value">{{ c.channels_created }}</p>
+      </a>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Active channels</p><span class="stat-icon success">{% icon "radar" %}</span></div>
+        <p class="stat-value success">{{ c.active_channels }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Monetized</p><span class="stat-icon brand">{% icon "circle-dollar-sign" %}</span></div>
+        <p class="stat-value brand">{{ c.monetized_channels }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Videos published</p><span class="stat-icon">{% icon "clapperboard" %}</span></div>
+        <p class="stat-value">{{ c.total_videos }}</p>
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Channel creation</p><span class="stat-icon">{% icon "rocket" %}</span></div>
+        <p class="stat-value">{{ channel_creation_rate|dash }}{% if channel_creation_rate is not None %}%{% endif %}</p>
+        {% if channel_creation_rate is None %}<p class="stat-hint">No students yet</p>{% endif %}
+      </div>
+      <div class="stat">
+        <div class="stat-head"><p class="stat-label">Batch completed</p><span class="stat-icon brand">{% icon "graduation-cap" %}</span></div>
+        <p class="stat-value brand">{{ c.completed }}</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<section class="grid grid-2 mt-3">
   <div class="card">
     <div class="card-header"><div><h2>Students by roadmap stage</h2><p>Where the cohort currently sits.</p></div></div>
     <div class="card-body">
@@ -86,7 +141,7 @@
       {% with peak=status_chart|max_count %}
         {% for row in status_chart %}
           <div class="hbar-row">
-            <span class="hbar-label">{{ row.status|title }}</span>
+            <span class="hbar-label" title="{{ row.status|humanize_enum }}">{{ row.status|humanize_enum }}</span>
             <div class="hbar-track"><div class="hbar-fill" style="width: {{ row.count|bar_height:peak }}%"></div></div>
             <span class="hbar-value">{{ row.count }}</span>
           </div>
@@ -102,7 +157,7 @@
   <div class="card">
     <div class="card-header">
       <div><h2>Upcoming deadlines</h2><p>Research due in the next 7 days.</p></div>
-      <a href="{% url 'academy:student_list' %}?preset=research-due-soon" class="muted">View all</a>
+      <a href="{% url 'academy:student_list' %}?preset=research-due-soon" class="muted">View all {% icon "arrow-right" "" "sm" %}</a>
     </div>
     {% if upcoming_deadlines %}
       <ul class="list">
@@ -130,7 +185,7 @@
   <div class="card">
     <div class="card-header">
       <div><h2>Recent alerts</h2></div>
-      <a href="{% url 'monitoring:alert_list' %}" class="muted">View all</a>
+      <a href="{% url 'monitoring:alert_list' %}" class="muted">View all {% icon "arrow-right" "" "sm" %}</a>
     </div>
     {% if recent_alerts %}
       <ul class="list">

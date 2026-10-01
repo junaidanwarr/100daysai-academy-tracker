@@ -9,8 +9,8 @@
     <p class="page-description">{{ student.enrollment_id }} · {{ student.batch }}</p>
   </div>
   <div class="flex gap-1">
-    {% if can_update %}<a href="{% url 'academy:student_edit' student.pk %}" class="btn-secondary">Edit</a>{% endif %}
-    <a href="{% url 'youtube:channel_create' %}?student={{ student.pk }}" class="btn-primary">Add channel</a>
+    {% if can_update %}<a href="{% url 'academy:student_edit' student.pk %}" class="btn-secondary">{% icon "pencil" %} Edit</a>{% endif %}
+    <a href="{% url 'youtube:channel_create' %}?student={{ student.pk }}" class="btn-primary">{% icon "plus" %} Add channel</a>
   </div>
 </div>
 
@@ -182,7 +182,7 @@
                 </span>
               </label>
             {% endif %}
-            <button type="submit" class="btn-primary" style="width:100%">Update status</button>
+            <button type="submit" class="btn-primary" style="width:100%">{% icon "check" %} Update status</button>
           </form>
         </div>
       </div>
@@ -203,7 +203,7 @@
                   onsubmit="return confirm('Issue a new password for {{ student.full_name|escapejs }}? The old one stops working and they are signed out everywhere.');">
               {% csrf_token %}
               <input type="hidden" name="action" value="reset">
-              <button type="submit" class="btn-secondary" style="width:100%">Reset password</button>
+              <button type="submit" class="btn-secondary" style="width:100%">{% icon "key-round" %} Reset password</button>
             </form>
           {% endif %}
         {% else %}
@@ -212,7 +212,7 @@
             <form method="post" action="{% url 'academy:student_portal_login' student.pk %}" class="mt-2">
               {% csrf_token %}
               <input type="hidden" name="action" value="create">
-              <button type="submit" class="btn-primary" style="width:100%">Create portal login</button>
+              <button type="submit" class="btn-primary" style="width:100%">{% icon "key-round" %} Create portal login</button>
             </form>
             <p class="tiny mt-1">Uses {{ student.email }} as the login. The password is shown once, on the next page.</p>
           {% else %}
@@ -236,7 +236,7 @@
               </div>
             {% endfor %}
             <p class="tiny">Staff notes are never shown to the student.</p>
-            <button type="submit" class="btn-primary" style="width:100%">Log it</button>
+            <button type="submit" class="btn-primary" style="width:100%">{% icon "plus" %} Log it</button>
           </form>
         </div>
       </div>

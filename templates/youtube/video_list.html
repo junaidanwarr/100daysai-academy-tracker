@@ -37,7 +37,7 @@
         {% endfor %}
       </select>
     </div>
-    <button type="submit" class="btn-primary">Search</button>
+    <button type="submit" class="btn-primary">{% icon "search" %} Search</button>
   </form>
 
   {% if page.object_list %}
@@ -75,11 +75,11 @@
     {% if page.has_other_pages %}
       <div class="card-body flex items-center gap-1">
         {% if page.has_previous %}
-          <a class="btn-secondary btn-sm" href="?page={{ page.previous_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">Previous</a>
+          <a class="btn-secondary btn-sm" href="?page={{ page.previous_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">{% icon "chevron-left" %} Previous</a>
         {% endif %}
         <span class="tiny muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
         {% if page.has_next %}
-          <a class="btn-secondary btn-sm" href="?page={{ page.next_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">Next</a>
+          <a class="btn-secondary btn-sm" href="?page={{ page.next_page_number }}&search={{ filters.search }}&type={{ filters.type }}&channel={{ filters.channel }}">Next {% icon "chevron-right" %}</a>
         {% endif %}
       </div>
     {% endif %}

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load academy_tags %}
 {% block title %}New batch · 100DaysAI Academy Tracker{% endblock %}
 
 {% block content %}
@@ -18,7 +19,7 @@
     <div class="card-body">{% include "_form.html" with wide_fields="description" %}</div>
   </div>
   <div class="form-actions">
-    <button type="submit" class="btn-primary">Create batch</button>
+    <button type="submit" class="btn-primary">{% icon "check" %} Create batch</button>
     <a href="{% url 'academy:batch_list' %}" class="btn-secondary">Cancel</a>
   </div>
 </form>

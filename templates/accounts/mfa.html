@@ -1,17 +1,19 @@
 {% extends "base.html" %}
+{% load academy_tags %}
 {% block title %}Two-factor authentication · 100DaysAI Academy Tracker{% endblock %}
 
 {% block body %}
 <div class="auth-shell">
   <div class="auth-card">
     <div class="auth-brand">
-      <div class="brand-mark">100</div>
+      <div class="brand-mark" aria-hidden="true">100</div>
       <h1>100DaysAI Academy</h1>
+      <p class="page-description">One more step to keep the academy secure.</p>
     </div>
 
     <div class="card">
       <div class="card-body">
-        <h2>Two-factor authentication</h2>
+        <h2 class="flex items-center gap-1">{% icon "shield-check" %} Two-factor authentication</h2>
         <p class="page-description mt-1">
           Enter the 6-digit code from your authenticator app, or one of your recovery codes.
         </p>
@@ -25,7 +27,7 @@
             <label for="{{ form.code.id_for_label }}">Authentication code</label>
             {{ form.code }}
           </div>
-          <button type="submit" class="btn-primary" style="width:100%">Verify</button>
+          <button type="submit" class="btn-primary w-full">Verify</button>
         </form>
       </div>
     </div>

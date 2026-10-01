@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load academy_tags %}
 {% block title %}Portal login · {{ student.full_name }} · 100DaysAI{% endblock %}
 
 {% block content %}
@@ -28,7 +29,7 @@
     {% endif %}
 
     <div class="form-actions">
-      <button type="button" class="btn-primary" id="copy-login">Copy for the student</button>
+      <button type="button" class="btn-primary" id="copy-login">{% icon "copy" %} Copy for the student</button>
       <a href="{{ student.get_absolute_url }}" class="btn-secondary">Done</a>
     </div>
     <p class="tiny" id="copy-note" aria-live="polite"></p>
