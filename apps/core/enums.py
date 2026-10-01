@@ -313,6 +313,7 @@ class ActivityKind(models.TextChoices):
     RESEARCH_SUBMITTED = "RESEARCH_SUBMITTED", "Research submitted"
     ASSIGNMENT_SUBMITTED = "ASSIGNMENT_SUBMITTED", "Assignment submitted"
     CHANNEL_CONNECTED = "CHANNEL_CONNECTED", "Channel analytics connected"
+    CHANNEL_SUBMITTED = "CHANNEL_SUBMITTED", "Channel submitted for review"
     VIDEO_PUBLISHED = "VIDEO_PUBLISHED", "Video published"
     CLASS_ATTENDED = "CLASS_ATTENDED", "Attended a class"
     MENTOR_SESSION = "MENTOR_SESSION", "Mentoring session"
@@ -333,6 +334,7 @@ STUDENT_ACTIVITY_KINDS = frozenset({
     ActivityKind.RESEARCH_SUBMITTED,
     ActivityKind.ASSIGNMENT_SUBMITTED,
     ActivityKind.CHANNEL_CONNECTED,
+    ActivityKind.CHANNEL_SUBMITTED,
     ActivityKind.VIDEO_PUBLISHED,
     ActivityKind.CLASS_ATTENDED,
     ActivityKind.MENTOR_SESSION,

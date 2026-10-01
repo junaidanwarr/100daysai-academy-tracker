@@ -14,6 +14,13 @@
   {% channel_badge channel.status channel.get_status_display %}
 </div>
 
+{% if channel.status == "UNDER_REVIEW" %}
+  <div class="alert-box alert-info" role="status">
+    Your instructor is checking this channel. Once they confirm it, its figures
+    start appearing here after the next sync.
+  </div>
+{% endif %}
+
 <div class="card">
   <div class="card-header"><div><h2>Channel record</h2></div></div>
   <div class="card-body">

@@ -82,7 +82,9 @@ STUDENT = {
     "assignment": ({"read", "create", "update"}, SCOPE_OWN),
     # Read-only. The channel record is created by an instructor once research
     # is approved, so that a channel cannot exist against unapproved research.
-    "channel": ({"read"}, SCOPE_OWN),
+    # `create` lets a student submit their own channel for review once their
+    # research is approved; it arrives UNDER_REVIEW and staff approve it.
+    "channel": ({"read", "create"}, SCOPE_OWN),
     "video": ({"read"}, SCOPE_OWN),
     "analytics": ({"read"}, SCOPE_OWN),
     "performance": ({"read"}, SCOPE_OWN),

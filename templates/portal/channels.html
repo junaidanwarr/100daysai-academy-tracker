@@ -7,11 +7,14 @@
   <div>
     <h1>My channels</h1>
     <p class="page-description">
-      Your channel record is created by your instructor once your research is
-      approved, so this page is read-only. Tell your instructor if anything here
-      is wrong.
+      Once your research is approved, submit the YouTube channel you created. Your
+      instructor checks it and confirms it here. Tell your instructor if anything
+      here is wrong.
     </p>
   </div>
+  {% if research_approved %}
+    <a href="{% url 'portal:channel_submit' %}" class="btn-primary">{% icon "plus" %} Submit my channel</a>
+  {% endif %}
 </div>
 
 {% if channels %}
@@ -37,13 +40,16 @@
       <p class="empty-title">No channels yet</p>
       <p class="empty-description">
         {% if research_approved %}
-          Your research is approved. Your instructor will record your channel here
-          once it has been created.
+          Your research is approved. Create your channel on YouTube, then submit its
+          link here for your instructor to check.
         {% else %}
           A channel is recorded after your research is approved. Get your research
           through review first — see <a href="{% url 'portal:research' %}">My research</a>.
         {% endif %}
       </p>
+      {% if research_approved %}
+        <a href="{% url 'portal:channel_submit' %}" class="btn-primary">{% icon "plus" %} Submit my channel</a>
+      {% endif %}
     </div>
   </div>
 {% endif %}

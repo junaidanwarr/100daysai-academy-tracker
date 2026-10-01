@@ -1,0 +1,29 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}Submit my channel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{% url 'portal:channels' %}">← My channels</a></p>
+    <h1>Submit my channel</h1>
+    <p class="page-description">
+      Give the details of the YouTube channel you created for your approved niche. Your
+      instructor checks it, then confirms it. Until then it shows as Under Review.
+    </p>
+  </div>
+</div>
+
+<div class="card" style="max-width:48rem">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "_form.html" with wide_fields="notes,channel_url" %}
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">{% icon "send" %} Submit for review</button>
+        <a href="{% url 'portal:channels' %}" class="btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

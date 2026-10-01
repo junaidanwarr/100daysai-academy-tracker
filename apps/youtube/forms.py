@@ -85,3 +85,68 @@ class ChannelForm(forms.ModelForm):
                 f"({existing.student.enrollment_id}). A Super Admin can override this with a recorded reason."
             )
         return cleaned
+
+
+class StudentChannelForm(forms.ModelForm):
+    """
+    What a student can tell us about a channel they have created. Everything
+    that is a staff judgement — status, monetization, ownership verified — is
+    left out; niche and audience are copied from the approved research.
+    """
+
+    class Meta:
+        model = YoutubeChannel
+        fields = ["channel_name", "channel_url", "youtube_channel_id", "channel_creation_date",
+                  "content_type", "primary_language", "upload_schedule", "notes"]
+        labels = {
+            "channel_name": "Channel name",
+            "channel_url": "Channel link",
+            "youtube_channel_id": "Channel ID (optional)",
+            "channel_creation_date": "Date you created it",
+            "content_type": "What you will publish",
+            "upload_schedule": "Planned upload schedule",
+            "notes": "Anything your instructor should know",
+        }
+        help_texts = {
+            "channel_url": "Copy it from your channel page, e.g. https://www.youtube.com/@yourchannel",
+            "youtube_channel_id": (
+                "Starts with UC. Find it in YouTube under Settings → Advanced settings. "
+                "Your instructor can add it later if you skip it."
+            ),
+            "upload_schedule": "For example: 3 Shorts a week, 1 long video every Sunday.",
+        }
+        widgets = {
+            "channel_creation_date": forms.DateInput(attrs={"type": "date"}),
+            "notes": forms.Textarea(attrs={"rows": 3}),
+            "channel_url": forms.URLInput(attrs={"placeholder": "https://www.youtube.com/@"}),
+            "youtube_channel_id": forms.TextInput(attrs={"placeholder": "UC…"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["channel_url"].required = True
+        for field in self.fields.values():
+            field.widget.attrs.setdefault("class", "input")
+
+    def clean_youtube_channel_id(self):
+        value = (self.cleaned_data.get("youtube_channel_id") or "").strip()
+        if not value:
+            return None
+        if not CHANNEL_ID_PATTERN.match(value):
+            raise forms.ValidationError("A YouTube channel ID starts with UC and is 24 characters long.")
+        # Soft-deleted channels still hold the unique ID, so check them too.
+        if YoutubeChannel.all_objects.filter(youtube_channel_id=value).exists():
+            raise forms.ValidationError(
+                "This channel is already registered in the academy. Speak to your instructor if it is yours."
+            )
+        return value
+
+    def clean_channel_url(self):
+        value = (self.cleaned_data.get("channel_url") or "").strip()
+        if not re.match(r"^https?://(www\.|m\.)?(youtube\.com|youtu\.be)/", value, re.I):
+            raise forms.ValidationError("Enter the link to your channel on youtube.com.")
+        if YoutubeChannel.objects.filter(channel_url__iexact=value).exists():
+            raise forms.ValidationError(
+                "This channel link is already registered in the academy. Speak to your instructor if it is yours."
+            )
+        return value

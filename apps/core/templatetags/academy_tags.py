@@ -181,6 +181,7 @@ ACTIVITY_TONES = {
     "RESEARCH_SUBMITTED": "blue",
     "ASSIGNMENT_SUBMITTED": "blue",
     "CHANNEL_CONNECTED": "teal",
+    "CHANNEL_SUBMITTED": "cyan",
     "VIDEO_PUBLISHED": "red",
     "CLASS_ATTENDED": "emerald",
     "MENTOR_SESSION": "emerald",

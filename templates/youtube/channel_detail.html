@@ -22,6 +22,15 @@
   </div>
 </div>
 
+{% if channel.status == "UNDER_REVIEW" %}
+  <div class="alert-box alert-info" role="status">
+    <strong>Awaiting review.</strong>
+    Check the channel{% if channel.channel_url %} (<a href="{{ channel.channel_url }}" target="_blank" rel="noopener noreferrer">open on YouTube</a>){% endif %}
+    belongs to the student and matches their approved niche, add the channel ID if it is missing,
+    then {% if can_update %}<a href="{% url 'youtube:channel_edit' channel.pk %}">set its status</a>{% else %}ask an instructor to set its status{% endif %}.
+  </div>
+{% endif %}
+
 {% if availability.public_reason %}
   <div class="alert-box alert-warning">{{ availability.public_reason }}</div>
 {% endif %}
