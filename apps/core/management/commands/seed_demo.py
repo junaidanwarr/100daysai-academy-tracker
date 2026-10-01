@@ -231,6 +231,7 @@ class Command(BaseCommand):
             user = User.objects.create_user(
                 email=email, password=password, full_name=name, role=role,
                 is_staff=role == UserRole.SUPER_ADMIN, is_superuser=role == UserRole.SUPER_ADMIN,
+                must_change_password=True,
             )
             credentials.append((role, email, password))
             return user, password
@@ -353,7 +354,7 @@ class Command(BaseCommand):
             self.stdout.write(line)
             self.stdout.write("  ACCOUNT CREDENTIALS - shown once, here only.")
             self.stdout.write("  These are never displayed anywhere in the application UI.")
-            self.stdout.write("  Change them after first sign-in.")
+            self.stdout.write("  Each account must set its own password at first sign-in.")
             self.stdout.write(line)
             for role, email, password in credentials:
                 self.stdout.write(f"  {role:<20} {email:<34} {password}")

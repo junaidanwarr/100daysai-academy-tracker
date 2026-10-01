@@ -1,10 +1,12 @@
 from django import forms
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from apps.accounts.services import attempt_login, sign_out, verify_mfa_challenge
+from apps.accounts.services import attempt_login, change_own_password, sign_out, verify_mfa_challenge
 from apps.core.enums import UserRole
 
 
@@ -30,6 +32,35 @@ class MfaForm(forms.Form):
             }
         ),
     )
+
+
+class ChangePasswordForm(PasswordChangeForm):
+    """
+    Django's own form: checks the current password and runs every validator in
+    AUTH_PASSWORD_VALIDATORS against the new one. Adds one rule — the new
+    password must differ from the current one, otherwise a forced change could
+    be "completed" by re-typing the password staff handed out.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["old_password"].label = "Current password"
+        self.fields["new_password1"].label = "New password"
+        self.fields["new_password2"].label = "Confirm new password"
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "input"
+        self.fields["old_password"].widget.attrs["autofocus"] = True
+
+    def clean_new_password1(self):
+        password = self.cleaned_data.get("new_password1")
+        if password and self.user.check_password(password):
+            raise forms.ValidationError("Choose a password different from your current one.", code="password_unchanged")
+        return password
+
+    def save(self, commit=True):
+        # Saving is done by the service, so the audit entry and session handling
+        # are never skipped.
+        return self.user
 
 
 def _safe_next(raw: str | None) -> str | None:
@@ -92,3 +123,21 @@ def mfa_challenge(request):
 def logout_view(request):
     sign_out(request)
     return redirect("accounts:login")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def password_change(request):
+    forced = request.user.must_change_password
+    form = ChangePasswordForm(request.user, request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        change_own_password(request, form.cleaned_data["new_password1"])
+        messages.success(request, "Your password has been changed. Any other signed-in devices have been signed out.")
+        return redirect(_home_for(request.user))
+
+    return render(
+        request,
+        "accounts/password_change_forced.html" if forced else "accounts/password_change.html",
+        {"form": form, "forced": forced},
+    )

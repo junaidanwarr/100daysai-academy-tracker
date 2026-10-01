@@ -59,8 +59,11 @@ class PortalLoginTests(TestCase):
         self.assertEqual(self.student.user.email, "asha@example.test")
         self.assertEqual(self.student.user.role, UserRole.STUDENT)
 
-        signed_in = Client().post("/login/", {"email": "asha@example.test", "password": password})
-        self.assertRedirects(signed_in, "/portal/")
+        browser = Client()
+        signed_in = browser.post("/login/", {"email": "asha@example.test", "password": password})
+        self.assertRedirects(signed_in, "/portal/", fetch_redirect_response=False)
+        # An issued password works, but only to reach the page that replaces it.
+        self.assertRedirects(browser.get("/portal/"), "/password/", fetch_redirect_response=False)
 
         # Recorded, but never with the password in it.
         entry = AuditLog.objects.get(action=AuditAction.CREATE, entity_type="User")
@@ -85,7 +88,8 @@ class PortalLoginTests(TestCase):
         user = User.objects.get(email="asha@example.test")
         student_browser = Client()
         student_browser.post("/login/", {"email": user.email, "password": old_password})
-        self.assertEqual(student_browser.get("/portal/").status_code, 200)
+        # Signed in: held on the change-password page, not sent to the login form.
+        self.assertEqual(student_browser.get("/password/").status_code, 200)
 
         user.failed_login_count = 5
         user.locked_until = timezone.now() + timedelta(minutes=30)
@@ -97,7 +101,8 @@ class PortalLoginTests(TestCase):
         self.assertTrue(user.check_password(new_password))
         self.assertIsNone(user.locked_until)
         # The session opened with the old password is gone.
-        self.assertEqual(student_browser.get("/portal/").status_code, 302)
+        self.assertRedirects(student_browser.get("/password/"), "/login/?next=/password/", fetch_redirect_response=False)
+        self.assertTrue(user.must_change_password)
 
     def test_an_instructor_may_not_issue_logins(self):
         self.client.force_login(self.tutor)

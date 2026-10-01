@@ -52,7 +52,10 @@
         </div>
       {% endfor %}
     </nav>
-    <div class="sidebar-footer">Signed in as {{ user.get_role_display }}</div>
+    <div class="sidebar-footer">
+      <span>Signed in as {{ user.get_role_display }}</span>
+      <a href="{% url 'accounts:password_change' %}" class="sidebar-footer-link">{% icon "key-round" "" "sm" %} Change password</a>
+    </div>
   </aside>
   <button type="button" class="nav-backdrop" data-nav-close tabindex="-1" aria-hidden="true"></button>
 
@@ -82,6 +85,9 @@
             <div class="user-role">{{ user.get_role_display }}</div>
           </div>
         </div>
+        <a href="{% url 'accounts:password_change' %}" class="icon-button" title="Change password" aria-label="Change password">
+          {% icon "key-round" %}
+        </a>
         <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}
           <button type="submit" class="btn-ghost btn-sm" title="Sign out">
             {% icon "log-out" %}<span class="signout-label">Sign out</span>

@@ -17,6 +17,7 @@
       <strong>Shown once.</strong> Copy these now and send them to the student privately.
       The password is not stored anywhere readable. If it is lost, reset it again.
     </div>
+    <p class="muted mt-1">The student is asked to choose their own password the first time they sign in with this one.</p>
 
     <div class="mt-2" style="display:grid;gap:0.75rem;overflow-wrap:anywhere">
       <div><p class="detail-label">Sign-in page</p><p class="detail-value mono">{{ login_url }}</p></div>
@@ -44,7 +45,8 @@
     const text = 'Your 100DaysAI portal login\n'
       + 'Sign in at: {{ login_url|escapejs }}\n'
       + 'Email: {{ email|escapejs }}\n'
-      + 'Password: {{ password|escapejs }}';
+      + 'Password: {{ password|escapejs }}\n'
+      + 'You will be asked to choose your own password when you first sign in.';
     navigator.clipboard.writeText(text).then(
       function () { note.textContent = 'Copied.'; },
       function () { note.textContent = 'Copy failed — select the text above instead.'; }

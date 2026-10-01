@@ -157,6 +157,42 @@ def sign_out(request) -> None:
     django_logout(request)
 
 
+def change_own_password(request, new_password: str) -> None:
+    """
+    Sets a password the user chose themselves and clears the forced-change flag.
+
+    The caller has already checked the current password and run Django's
+    validators (the form does both). Changing the hash invalidates every other
+    session; `update_session_auth_hash` keeps this one signed in.
+    """
+    from django.contrib.auth import update_session_auth_hash
+
+    user = request.user
+    was_forced = user.must_change_password
+    user.set_password(new_password)
+    user.must_change_password = False
+    user.password_changed_at = timezone.now()
+    user.failed_login_count = 0
+    user.locked_until = None
+    user.save(update_fields=[
+        "password", "must_change_password", "password_changed_at",
+        "failed_login_count", "locked_until", "updated_at",
+    ])
+    update_session_auth_hash(request, user)
+
+    write_audit(
+        actor=user,
+        action=AuditAction.UPDATE,
+        entity_type="User",
+        entity_id=user.pk,
+        summary=(
+            f"{user.email} changed their password"
+            f"{' (required after an issued password)' if was_forced else ''}; other sessions signed out."
+        ),
+        **current_request_meta(),
+    )
+
+
 def mfa_satisfied(request) -> bool:
     """
     True when the session has cleared every gate. A role that does not require
@@ -202,6 +238,7 @@ def issue_student_login(actor, student, password: str | None = None) -> tuple[Us
     with transaction.atomic():
         user = User.objects.create_user(
             email=email, password=password, full_name=student.full_name, role=UserRole.STUDENT,
+            must_change_password=True,
         )
         student.user = user
         student.save(update_fields=["user", "updated_at"])
@@ -235,9 +272,10 @@ def reset_student_password(actor, student) -> str:
 
     password = generate_password()
     user.set_password(password)
+    user.must_change_password = True
     user.failed_login_count = 0
     user.locked_until = None
-    user.save(update_fields=["password", "failed_login_count", "locked_until", "updated_at"])
+    user.save(update_fields=["password", "must_change_password", "failed_login_count", "locked_until", "updated_at"])
 
     write_audit(
         actor=actor,

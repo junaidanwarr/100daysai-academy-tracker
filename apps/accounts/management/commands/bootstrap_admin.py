@@ -46,6 +46,9 @@ class Command(BaseCommand):
             email=email,
             password=password,
             full_name=os.environ.get("BOOTSTRAP_ADMIN_NAME") or "Administrator",
+            # The password sits in the host's environment, so it is treated as
+            # issued: the first sign-in replaces it with one only the admin knows.
+            must_change_password=True,
         )
         # The password is never echoed; the operator already has it.
         self.stdout.write(self.style.SUCCESS(f"bootstrap_admin: created Super Admin {email}."))
