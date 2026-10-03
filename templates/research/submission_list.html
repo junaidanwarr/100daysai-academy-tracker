@@ -83,6 +83,7 @@
               <td class="muted">v{{ s.version }}</td>
               <td class="muted">
                 {{ s.topic|dash }}{% if s.niche %} <span class="tiny">· {{ s.niche }}</span>{% endif %}
+                {% if s.channel_sheet %}<br><span class="badge badge-brand mt-1">{% icon "table" "" "sm" %} Sheet · {{ s.channel_sheet.rows|length }} channels</span>{% endif %}
               </td>
               <td>{% submission_badge s.status s.get_status_display %}</td>
               <td class="muted">{{ s.submitted_at|date:"d M Y"|default:"—" }}</td>

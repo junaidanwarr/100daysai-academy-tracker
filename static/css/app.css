@@ -881,3 +881,10 @@ th[aria-sort] .cr-arrow { color: var(--brand-600); }
   .cr-drop > .btn-primary { grid-column: 1 / -1; justify-self: start; }
   .cr-scope { display: none; }
 }
+
+.cr-checks > summary {
+  cursor: pointer; padding: var(--space-3) var(--space-5); border-top: 1px solid var(--border-subtle);
+  font-weight: 500; color: var(--brand-600);
+}
+.cr-checks > summary:hover { color: var(--brand-700); }
+.cr-checks[open] > summary { border-bottom: 1px solid var(--border-subtle); }

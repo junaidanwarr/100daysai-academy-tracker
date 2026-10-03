@@ -15,6 +15,13 @@
   {% submission_badge submission.status submission.get_status_display %}
 </div>
 
+{% if submission.channel_sheet %}
+  <div class="alert-box alert-info" role="status">
+    Submitted as a channel sheet: <strong>{{ submission.channel_sheet.file }}</strong>,
+    {{ submission.channel_sheet.rows|length }} channels. <a href="#channel-sheet">See the full sheet</a>
+  </div>
+{% endif %}
+
 <div class="grid grid-3">
   <div class="span-2 grid" style="gap:1rem">
     <div class="card">
@@ -89,6 +96,11 @@
           </p>
         </div>
 
+        {% comment %}
+          A sheet can carry dozens of channels; past a handful the per-channel
+          checks fold away so the review form and the sheet stay within reach.
+        {% endcomment %}
+        {% if competitor_rows|length > 8 %}<details class="cr-checks"><summary>Show the checks for all {{ competitor_rows|length }} channels</summary>{% endif %}
         <ul class="list">
           {% for c, channel in competitor_rows %}
             <li>
@@ -128,6 +140,7 @@
             </li>
           {% endfor %}
         </ul>
+        {% if competitor_rows|length > 8 %}</details>{% endif %}
       {% else %}
         <div class="empty">
           <p class="empty-title">No competitors listed</p>
@@ -300,6 +313,15 @@
     </div>
   </div>
 </div>
+
+
+{% if submission.channel_sheet %}
+<section class="mt-3" id="channel-sheet" aria-labelledby="channel-sheet-title">
+  <h2 class="section-title" id="channel-sheet-title">{% icon "table" "" "sm" %} Channel sheet · {{ submission.channel_sheet.file }}</h2>
+  {{ submission.channel_sheet|json_script:"channel-sheet-data" }}
+  {% include "research/_channel_research.html" with readonly_sheet="channel-sheet-data" %}
+</section>
+{% endif %}
 
 {% if may_review and criteria %}
 <script>
