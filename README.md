@@ -10,6 +10,9 @@ performance, alerts, and a signed completion record.
 in [docs/ROADMAP.md](docs/ROADMAP.md); the 40-table schema already covers all
 five, so later phases are migrations rather than rewrites.
 
+For how a student moves through the system step by step — who does what, and
+what changes on its own — see [docs/WORKFLOW.md](docs/WORKFLOW.md).
+
 To check it yourself, follow [docs/TESTING.md](docs/TESTING.md) — it runs the
 suite and walks all three phases, including what should happen *before* you have
 any Google credentials.

@@ -40,6 +40,8 @@ from apps.research.forms import ResearchSubmissionForm
 from apps.research.models import ResearchSubmission
 from apps.research.services import SubmissionStateError, submit_research
 from apps.youtube import services as youtube_services
+from apps.youtube.forms import StudentChannelForm
+from apps.youtube.submissions import ChannelSubmissionError, channel_block_reason, submit_student_channel
 from apps.youtube.models import Video, YoutubeChannel
 
 # A student may start a new attempt only when the previous one is closed. These
@@ -280,8 +282,8 @@ def activity(request, student):
 @with_student
 def channels(request, student):
     """
-    Read-only. A channel record is created by an instructor once research is
-    approved, so a channel cannot exist against unapproved research.
+    The student's channels. Once research is approved they can submit a channel
+    themselves (see channel_submit); staff can also record one from the console.
     """
     return render(
         request,
@@ -294,6 +296,35 @@ def channels(request, student):
                 status=SubmissionStatus.APPROVED
             ).exists(),
         },
+    )
+
+
+@with_student
+@require_http_methods(["GET", "POST"])
+def channel_submit(request, student):
+    """Hand in a channel the student has created. It arrives UNDER_REVIEW."""
+    blocked = channel_block_reason(student)
+    if blocked:
+        messages.info(request, blocked)
+        return redirect("portal:channels")
+
+    form = StudentChannelForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            channel = submit_student_channel(request.user, student, form)
+        except ChannelSubmissionError as exc:
+            form.add_error(None, str(exc))
+        else:
+            messages.success(
+                request,
+                f"{channel.channel_name} submitted. Your instructor will check it and confirm it.",
+            )
+            return redirect("portal:channel_detail", pk=channel.pk)
+
+    return render(
+        request,
+        "portal/channel_submit.html",
+        {"active_nav": "portal:channels", "student": student, "form": form},
     )
 
 

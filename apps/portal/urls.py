@@ -18,6 +18,7 @@ urlpatterns = [
     path("portal/assignments/<uuid:pk>/", views.assignment_detail, name="assignment_detail"),
     path("portal/activity/", views.activity, name="activity"),
     path("portal/channels/", views.channels, name="channels"),
+    path("portal/channels/new/", views.channel_submit, name="channel_submit"),
     path("portal/channels/<uuid:pk>/", views.channel_detail, name="channel_detail"),
     path("portal/videos/", views.videos, name="videos"),
     path("portal/videos/<uuid:pk>/", views.video_detail, name="video_detail"),

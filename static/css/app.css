@@ -135,6 +135,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* The hidden attribute always wins, even over a component that sets display. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -805,3 +808,76 @@ label, .label { display: block; margin-bottom: 0.375rem; font-size: 0.8125rem; f
 .sidebar-footer { display: flex; flex-direction: column; gap: var(--space-2); }
 .sidebar-footer-link { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--frame-text); font-weight: 500; }
 .sidebar-footer-link:hover { color: #fff; text-decoration: none; }
+
+/* --- Page tabs ------------------------------------------------------------ */
+
+/* Splits one page into views without a reload. Driven by app.js
+   ([data-tabs]); without JS every panel simply shows in order. */
+.page-tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--border); margin-bottom: var(--space-5); overflow-x: auto; }
+.page-tab {
+  appearance: none; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap;
+  padding: var(--space-3) var(--space-3); font: inherit; font-size: 0.875rem; font-weight: 500;
+  color: var(--text-muted); cursor: pointer; transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.page-tab:hover { color: var(--text); }
+.page-tab[aria-selected="true"] { color: var(--brand-700); border-bottom-color: var(--brand-600); }
+.page-tab .icon { width: 1rem; height: 1rem; }
+
+/* --- Channel research workspace ------------------------------------------ */
+
+.cr-drop {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-4);
+  padding: var(--space-5); border: 2px dashed var(--border-strong); border-radius: var(--radius-lg);
+  background: var(--surface); cursor: pointer; transition: border-color 0.15s var(--ease), background-color 0.15s var(--ease);
+}
+.cr-drop:hover, .cr-drop.is-over { border-color: var(--brand-500); background: var(--brand-50); }
+.cr-drop:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.cr-drop-icon { display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: var(--radius-lg); background: var(--brand-50); color: var(--brand-600); }
+.cr-drop-title { font-weight: 600; color: var(--text); }
+.cr-drop-text .muted { margin-top: var(--space-1); max-width: 60ch; }
+.cr-status { margin: var(--space-3) 0 0; color: var(--text-muted); font-size: 0.875rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.cr-status.alert-box { margin-bottom: 0; display: block; }
+.cr-status .cr-clear { margin-left: var(--space-2); vertical-align: middle; }
+.cr-scope { margin-left: auto; font-weight: 500; text-transform: none; letter-spacing: 0; }
+.cr-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.cr-stats .stat { min-width: 0; }
+.cr-stats .stat-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-stat-text { font-size: 1.0625rem; line-height: 2.1; }
+.cr-empty-line { padding: var(--space-5); text-align: center; }
+
+.cr-breakdown tbody tr { cursor: pointer; }
+.cr-breakdown tbody tr.is-selected td { background: var(--brand-50); }
+.cr-share { display: grid; grid-template-columns: minmax(6rem, 1fr) 3rem; align-items: center; gap: var(--space-2); min-width: 9rem; }
+.cr-share-track { height: 0.375rem; border-radius: var(--radius-full); background: var(--slate-100); overflow: hidden; }
+.cr-share-fill { height: 100%; border-radius: var(--radius-full); background: var(--brand-500); transition: width 0.3s var(--ease); }
+
+.cr-table tbody tr:nth-child(even) td { background: var(--slate-50); }
+.cr-table tbody tr:hover td { background: var(--brand-50); }
+.cr-table td { vertical-align: top; }
+.cr-table th { padding: 0; }
+.cr-sort {
+  appearance: none; background: none; border: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit;
+  display: flex; align-items: center; gap: var(--space-1); width: 100%; padding: var(--space-3) var(--space-4); cursor: pointer; white-space: nowrap;
+}
+th.numeric .cr-sort { justify-content: flex-end; }
+.cr-sort:hover { color: var(--text); }
+.cr-table th:not(:has(.cr-sort)) { padding: var(--space-3) var(--space-4); }
+.cr-arrow { font-size: 0.5625rem; color: var(--text-faint); }
+th[aria-sort] .cr-arrow { color: var(--brand-600); }
+.cr-strong { font-weight: 600; color: var(--text); }
+.cr-faint { color: var(--text-faint); }
+.cr-name { min-width: 9rem; }
+.cr-angle { min-width: 13rem; max-width: 18rem; }
+.cr-cat { min-width: 9rem; }
+.cr-notes { min-width: 15rem; max-width: 22rem; }
+.cr-visit { white-space: nowrap; }
+.cr .filter-bar .field select { min-width: 10rem; }
+
+@media (max-width: 1280px) { .cr-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .cr-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cr-drop { grid-template-columns: auto minmax(0, 1fr); }
+  .cr-drop > .btn-primary { grid-column: 1 / -1; justify-self: start; }
+  .cr-scope { display: none; }
+}

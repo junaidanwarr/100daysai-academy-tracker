@@ -14,6 +14,17 @@
   {% channel_badge channel.status channel.get_status_display %}
 </div>
 
+{% if channel.status == "UNDER_REVIEW" %}
+  <div class="alert-box alert-info" role="status">
+    Your instructor is checking this channel.
+    {% if channel.youtube_channel_id %}
+      Its public figures appear here after the next sync — that does not wait for the review.
+    {% else %}
+      Figures appear once its channel ID is recorded; your instructor adds it if you did not.
+    {% endif %}
+  </div>
+{% endif %}
+
 <div class="card">
   <div class="card-header"><div><h2>Channel record</h2></div></div>
   <div class="card-body">
