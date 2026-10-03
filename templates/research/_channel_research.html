@@ -1,0 +1,125 @@
+{% load static academy_tags %}
+{% comment %}
+  Channel research workspace, shared by the staff Research page and the
+  student's My research page. Files are parsed in the browser and never
+  uploaded: nothing here reaches the server, and what one person loads is
+  remembered on their own device only (keyed by their account).
+{% endcomment %}
+<div class="cr" id="cr-root"
+     data-store-key="channelResearch.v1.{{ user.pk }}"
+     data-sample-url="{% static 'data/research-template-sample.json' %}">
+
+  <div class="cr-drop" id="cr-drop" role="button" tabindex="0" aria-describedby="cr-drop-help">
+    <span class="cr-drop-icon" aria-hidden="true">{% icon "upload" "" "lg" %}</span>
+    <div class="cr-drop-text">
+      <p class="cr-drop-title">Drop your research sheet here, or choose a file</p>
+      <p class="muted" id="cr-drop-help">
+        The "All Channels" sheet is read first; headings may sit below a title row.
+        The file stays in your browser and is not uploaded to the academy.
+      </p>
+      <span class="badge badge-slate mt-1">Accepts: .xlsx, .csv</span>
+    </div>
+    <button type="button" class="btn-primary" id="cr-pick">{% icon "upload" %} Upload file</button>
+    <input type="file" id="cr-file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden>
+  </div>
+  <div class="cr-status" id="cr-status" aria-live="polite">No file loaded yet.</div>
+
+  <h2 class="section-title">{% icon "chart-column" "" "sm" %} Summary <span class="cr-scope" id="cr-scope">Nothing loaded</span></h2>
+  <section class="grid grid-stats cr-stats" aria-label="Research summary">
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Total Channels</p><span class="stat-icon brand">{% icon "monitor-play" %}</span></div>
+      <p class="stat-value" id="cr-s-count">0</p><p class="stat-hint" id="cr-s-count-hint">&nbsp;</p>
+    </div>
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Total Subscribers</p><span class="stat-icon brand">{% icon "users" %}</span></div>
+      <p class="stat-value" id="cr-s-subs">0</p><p class="stat-hint" id="cr-s-subs-hint">&nbsp;</p>
+    </div>
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Total Views</p><span class="stat-icon brand">{% icon "eye" %}</span></div>
+      <p class="stat-value" id="cr-s-views">0</p><p class="stat-hint" id="cr-s-views-hint">&nbsp;</p>
+    </div>
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Avg Views / Channel</p><span class="stat-icon brand">{% icon "trending-up" %}</span></div>
+      <p class="stat-value" id="cr-s-avg">0</p><p class="stat-hint" id="cr-s-avg-hint">&nbsp;</p>
+    </div>
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Biggest Channel</p><span class="stat-icon success">{% icon "target" %}</span></div>
+      <p class="stat-value cr-stat-text" id="cr-s-big">—</p><p class="stat-hint" id="cr-s-big-hint">&nbsp;</p>
+    </div>
+    <div class="stat">
+      <div class="stat-head"><p class="stat-label">Number of Categories</p><span class="stat-icon">{% icon "layers" %}</span></div>
+      <p class="stat-value" id="cr-s-cats">0</p><p class="stat-hint">&nbsp;</p>
+    </div>
+  </section>
+
+  <div class="card mt-2">
+    <div class="card-header">
+      <div><h2>By angle / category</h2><p>Click a row to filter the channel table to that category.</p></div>
+    </div>
+    <div class="table-scroll">
+      <table class="cr-breakdown">
+        <thead>
+          <tr>
+            <th>Angle / Category Name</th>
+            <th class="numeric">Channels</th>
+            <th class="numeric">Total Subscribers</th>
+            <th>Share of subscribers</th>
+            <th class="numeric">Total Views</th>
+            <th class="numeric">Avg Views / Channel</th>
+            <th>Biggest Channel (by subs)</th>
+          </tr>
+        </thead>
+        <tbody id="cr-breakdown-body"></tbody>
+      </table>
+    </div>
+    <p class="cr-empty-line muted" id="cr-breakdown-empty">The breakdown fills in once a file is loaded.</p>
+  </div>
+
+  <div class="card mt-2">
+    <div class="card-header">
+      <div><h2>All channels</h2><p id="cr-source">No file loaded</p></div>
+    </div>
+    <div class="filter-bar">
+      <div class="field filter-grow">
+        <label for="cr-q">Search</label>
+        <input type="search" id="cr-q" class="input" placeholder="Name, angle, category or notes" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="cr-cat">Category</label>
+        <select id="cr-cat" class="input"><option value="">All categories</option></select>
+      </div>
+      <div class="field">
+        <label for="cr-size">Size</label>
+        <select id="cr-size" class="input">
+          <option value="">All sizes</option>
+          <option>Big</option><option>Medium</option><option>Small</option><option>Tiny</option>
+        </select>
+      </div>
+      <button type="button" class="btn-secondary" id="cr-reset" hidden>{% icon "x" %} Clear filters</button>
+    </div>
+    <div class="table-scroll">
+      <table class="cr-table">
+        <thead><tr id="cr-head-row"></tr></thead>
+        <tbody id="cr-body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="cr-empty">
+      <p class="empty-title" id="cr-empty-title">Upload a CSV or XLSX file to populate the research table</p>
+      <p class="empty-description" id="cr-empty-text">Use the upload area above, or drop a file onto it.</p>
+      <button type="button" class="btn-secondary" id="cr-sample">Load the Research Template sample (34 channels)</button>
+    </div>
+    <div class="pagination">
+      <p class="muted" id="cr-count">Showing 0 of 0 channels</p>
+      <div class="flex items-center gap-1">
+        <button type="button" class="btn-secondary btn-sm" id="cr-prev" disabled>{% icon "chevron-left" %} Prev</button>
+        <span class="muted" id="cr-page">Page 1 of 1</span>
+        <button type="button" class="btn-secondary btn-sm" id="cr-next" disabled>Next {% icon "chevron-right" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Parsers load only on pages that include this partial. #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.0/papaparse.min.js" defer></script>
+<script src="{% static 'js/channel-research.js' %}" defer></script>

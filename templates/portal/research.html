@@ -13,6 +13,12 @@
   </div>
 </div>
 
+<div class="page-tabs" role="tablist" aria-label="Research views" data-tabs>
+  <button type="button" class="page-tab" role="tab" id="tab-my-submission" data-tab="my-submission" aria-controls="panel-my-submission" aria-selected="true">{% icon "file-search" %} My submission</button>
+  <button type="button" class="page-tab" role="tab" id="tab-channel-research" data-tab="channel-research" aria-controls="panel-channel-research" aria-selected="false">{% icon "table" %} Channel research</button>
+</div>
+
+<div id="panel-my-submission" role="tabpanel" aria-labelledby="tab-my-submission" data-panel="my-submission">
 {% if not can_submit %}
   <div class="alert-box alert-info" role="status">
     Version {{ latest.version }} is with your instructor. You can submit again once it has been reviewed.
@@ -132,6 +138,15 @@
       <p class="empty-description">Your first submission will appear here.</p>
     </div>
   {% endif %}
+</div>
+</div>
+
+<div id="panel-channel-research" role="tabpanel" aria-labelledby="tab-channel-research" data-panel="channel-research" hidden>
+  <p class="page-description mb-0" style="margin-bottom:var(--space-4)">
+    Load the channel sheet you are building for your niche research to compare channels by angle, size and reach.
+    It is for your own analysis: competitor channels you want reviewed still go in the form under My submission.
+  </p>
+  {% include "research/_channel_research.html" %}
 </div>
 
 {% if can_submit and form %}

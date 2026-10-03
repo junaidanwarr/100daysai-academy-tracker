@@ -15,6 +15,12 @@
   {% endif %}
 </div>
 
+<div class="page-tabs" role="tablist" aria-label="Research views" data-tabs>
+  <button type="button" class="page-tab" role="tab" id="tab-review-queue" data-tab="review-queue" aria-controls="panel-review-queue" aria-selected="true">{% icon "list-checks" %} Review queue</button>
+  <button type="button" class="page-tab" role="tab" id="tab-channel-research" data-tab="channel-research" aria-controls="panel-channel-research" aria-selected="false">{% icon "table" %} Channel research</button>
+</div>
+
+<div id="panel-review-queue" role="tabpanel" aria-labelledby="tab-review-queue" data-panel="review-queue">
 <section class="grid grid-stats">
   <div class="stat">
     <p class="stat-label">Awaiting review</p>
@@ -96,5 +102,10 @@
       </p>
     </div>
   {% endif %}
+</div>
+</div>
+
+<div id="panel-channel-research" role="tabpanel" aria-labelledby="tab-channel-research" data-panel="channel-research" hidden>
+  {% include "research/_channel_research.html" %}
 </div>
 {% endblock %}
