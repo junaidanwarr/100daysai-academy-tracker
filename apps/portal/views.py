@@ -19,6 +19,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -36,7 +37,7 @@ from apps.assignments.services import (
 )
 from apps.core.enums import MetricSource, SubmissionStatus
 from apps.portal.access import student_required, with_student
-from apps.research.forms import ResearchSubmissionForm
+from apps.research.forms import ResearchSubmissionForm, SheetSubmissionForm
 from apps.research.models import ResearchSubmission
 from apps.research.services import SubmissionStateError, submit_research
 from apps.youtube import services as youtube_services
@@ -148,8 +149,51 @@ def research(request, student):
             "can_submit": can_submit,
             "submissions": submissions,
             "existing_competitors": _competitor_rows(draft),
+            "sheet_form": SheetSubmissionForm() if can_submit else None,
+            "sheet_blocked": None if can_submit else (
+                f"Version {latest.version} is with your instructor. You can submit a sheet once it has been reviewed."
+            ),
         },
     )
+
+
+@with_student
+@require_POST
+def research_sheet(request, student):
+    """
+    Submits the channel sheet loaded in the Channel research tab as a research
+    attempt. It goes through submit_research like the form does, so versions,
+    the review queue, status moves and the audit trail are identical.
+    """
+    latest = ResearchSubmission.objects.filter(student=student).order_by("-version").first()
+    if latest and latest.status in AWAITING_REVIEW:
+        messages.error(request, f"Version {latest.version} is still with your instructor. Wait for the review before submitting again.")
+        return redirect(reverse("portal:research") + "#channel-research")
+
+    form = SheetSubmissionForm(request.POST)
+    if not form.is_valid():
+        errors = [e for errs in form.errors.values() for e in errs]
+        messages.error(request, "Your sheet was not submitted. " + " ".join(errors))
+        return redirect(reverse("portal:research") + "#channel-research")
+
+    sheet = form.cleaned_data["sheet"]
+    data = {
+        "topic": form.cleaned_data["topic"],
+        "niche": form.cleaned_data["niche"] or None,
+        "notes": form.cleaned_data["notes"] or None,
+        "channel_sheet": sheet,
+    }
+    try:
+        submission = submit_research(request.user, student, data, form.competitors())
+    except SubmissionStateError as exc:
+        messages.error(request, str(exc))
+        return redirect(reverse("portal:research") + "#channel-research")
+
+    messages.success(
+        request,
+        f"Research v{submission.version} submitted for review with {len(sheet['rows'])} channels from {sheet['file']}.",
+    )
+    return redirect("portal:research")
 
 
 def _competitor_rows(draft) -> list[dict]:

@@ -149,6 +149,16 @@ def submit_research(actor, student: Student, data: dict, competitors: list[dict]
         # Move the student into review only from a state where that makes sense.
         if student.status in REVIEWABLE_FROM:
             try:
+                # A student enrolled without a research start date has, by
+                # submitting, plainly started their research. The roadmap has
+                # no direct Enrolled -> Submitted step, so take the real one
+                # first rather than silently leaving them at Enrolled.
+                if student.status == StudentStatus.ENROLLED:
+                    change_status(
+                        actor, student, StudentStatus.RESEARCH_IN_PROGRESS,
+                        reason=f"Research version {submission.version} submitted",
+                        propagated=True,
+                    )
                 change_status(
                     actor, student, StudentStatus.ASSIGNMENT_SUBMITTED,
                     reason=f"Research version {submission.version} submitted",

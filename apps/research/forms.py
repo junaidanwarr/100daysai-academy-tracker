@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime
 
 from django import forms
@@ -237,3 +238,111 @@ class CriterionForm(forms.ModelForm):
         if pass_mark is not None and maximum is not None and pass_mark > maximum:
             raise forms.ValidationError("The pass mark cannot exceed the maximum score.")
         return cleaned
+
+
+SHEET_MAX_ROWS = 500
+_URL = re.compile(r"^https?://\S+$", re.I)
+
+
+def _sheet_number(value):
+    """Numbers arrive already parsed by the browser; anything else is unknown."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value != value or value < 0 or value > 10**13:  # NaN, negative, absurd
+        return None
+    return round(value, 2)
+
+
+def _sheet_text(value, limit):
+    return str(value).strip()[:limit] if isinstance(value, (str, int, float)) and not isinstance(value, bool) else ""
+
+
+class SheetSubmissionForm(forms.Form):
+    """
+    Submits the channel sheet a student loaded in the Channel research tab as a
+    research attempt. The sheet is parsed in the browser; everything it sends
+    is re-checked here, since anything can be posted to this endpoint.
+    """
+
+    # Shares the page with the full research form, so its ids must not clash.
+    prefix = "sheet"
+
+    topic = forms.CharField(
+        max_length=200, label="Topic",
+        widget=forms.TextInput(attrs={"class": "input", "placeholder": "e.g. Faceless sports documentaries"}),
+    )
+    niche = forms.CharField(
+        max_length=160, required=False, label="Niche",
+        widget=forms.TextInput(attrs={"class": "input"}),
+    )
+    notes = forms.CharField(
+        required=False, label="Note for your instructor",
+        widget=forms.Textarea(attrs={"class": "input", "rows": 2, "placeholder": "Optional"}),
+    )
+    sheet = forms.CharField(widget=forms.HiddenInput())
+
+    def clean_sheet(self):
+        try:
+            data = json.loads(self.cleaned_data["sheet"])
+        except (TypeError, ValueError):
+            raise forms.ValidationError("The sheet could not be read. Load the file again and resubmit.")
+        rows = data.get("rows") if isinstance(data, dict) else None
+        if not isinstance(rows, list) or not rows:
+            raise forms.ValidationError("Load a sheet with at least one channel before submitting.")
+        if len(rows) > SHEET_MAX_ROWS:
+            raise forms.ValidationError(f"A sheet can hold at most {SHEET_MAX_ROWS} channels.")
+
+        clean_rows = []
+        for raw in rows:
+            if not isinstance(raw, dict):
+                continue
+            name = _sheet_text(raw.get("name"), 200)
+            if not name:
+                continue
+            link = _sheet_text(raw.get("link"), 500)
+            size = _sheet_text(raw.get("size"), 20)
+            clean_rows.append({
+                "n": _sheet_number(raw.get("n")),
+                "name": name,
+                "link": link if _URL.match(link) else None,
+                "angle": _sheet_text(raw.get("angle"), 300),
+                "cat": _sheet_text(raw.get("cat"), 160),
+                "videos": _sheet_number(raw.get("videos")),
+                "subs": _sheet_number(raw.get("subs")),
+                "views": _sheet_number(raw.get("views")),
+                "avg": _sheet_number(raw.get("avg")),
+                "size": size,
+                "notes": _sheet_text(raw.get("notes"), 1000),
+            })
+        if not clean_rows:
+            raise forms.ValidationError("None of the rows has a channel name.")
+        return {
+            "file": _sheet_text(data.get("file"), 200) or "Uploaded sheet",
+            "sheet": _sheet_text(data.get("sheet"), 100) or None,
+            "rows": clean_rows,
+        }
+
+    def competitors(self) -> list[dict]:
+        """
+        The sheet's channels as competitor rows, so the four niche-validation
+        rules run on them. A row needs a link to be a competitor; rows without
+        one stay visible in the sheet itself.
+        """
+        out = []
+        for r in self.cleaned_data["sheet"]["rows"]:
+            if not r["link"]:
+                continue
+            bits = [b for b in (r["angle"], r["cat"], r["size"], r["notes"]) if b]
+            metrics = {
+                "subscriber_count": int(r["subs"]) if r["subs"] is not None else None,
+                "view_count": int(r["views"]) if r["views"] is not None else None,
+                "video_count": int(r["videos"]) if r["videos"] is not None else None,
+            }
+            out.append({
+                "channel_name": r["name"],
+                "channel_url": r["link"],
+                "notes": " · ".join(bits)[:1000] or None,
+                "metrics_source": MetricSource.MANUAL if any(v is not None for v in metrics.values()) else None,
+                **metrics,
+            })
+        return out

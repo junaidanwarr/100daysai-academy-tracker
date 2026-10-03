@@ -96,6 +96,11 @@ class ResearchSubmission(models.Model):
     content_gap_analysis = models.TextField(null=True, blank=True)
     monetization_potential = models.TextField(null=True, blank=True)
     notes = models.TextField(null=True, blank=True)
+    # The channel sheet the student uploaded from the Channel research tab, as
+    # parsed in their browser: {"file", "sheet", "rows": [...]}. Kept with the
+    # attempt so a reviewer sees exactly what was submitted, even after the
+    # student loads a different file.
+    channel_sheet = models.JSONField(null=True, blank=True)
 
     submitted_at = models.DateTimeField(null=True, blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)

@@ -99,6 +99,16 @@ subscribers, views, video count, oldest video date, views per video).
 - **Request revision** or **Reject** → status moves on its own to **Revision
   Required**, and the student resubmits.
 
+**Or submit a channel sheet.** On **My research → Channel research**, the
+student uploads their research spreadsheet (.xlsx or .csv, such as the Research
+Template). Once it is loaded, **Submit this sheet for review** asks for a topic,
+fills the niche in from the sheet's main category, and sends it as the next
+research version — the same queue, statuses and decisions as the form. On the
+review page the instructor sees the whole sheet (summary, angle breakdown,
+every channel), and channels with a link are also run through the four niche
+rules. A student still marked Enrolled moves through Research in Progress to
+Assignment Submitted when they submit.
+
 Every attempt is kept as its own version (v1, v2, …). A new version cannot be
 submitted while one is waiting for review.
 

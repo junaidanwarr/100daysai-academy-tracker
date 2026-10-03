@@ -16,6 +16,8 @@
 
   var PAGE_SIZE = 10;
   var STORE_KEY = root.dataset.storeKey || "channelResearch.v1";
+  // Read-only: a submitted sheet shown to its reviewer. No upload, no storage.
+  var READONLY = root.dataset.readonly || null;
   var SAMPLE_URL = root.dataset.sampleUrl;
 
   // Display order, with the header variants each column accepts.
@@ -170,6 +172,7 @@
   // ---- State ---------------------------------------------------------------
 
   function save() {
+    if (READONLY) return;
     try { localStorage.setItem(STORE_KEY, JSON.stringify({ rows: state.rows, source: state.source })); } catch (e) { /* storage blocked: still works for this visit */ }
   }
   function load(rows, source) {
@@ -248,6 +251,7 @@
   // from the user's file and are never parsed as HTML.
   function setStatus(kind, parts) {
     var box = $("cr-status");
+    if (!box) return;
     box.className = "cr-status" + (kind ? " alert-box alert-" + kind : "");
     box.setAttribute("role", kind === "error" ? "alert" : "status");
     box.textContent = "";
@@ -416,8 +420,35 @@
     $("cr-source").textContent = !s ? "No file loaded" : (s.sample ? "Sample · " : "") + s.file + (s.sheet ? " · " + s.sheet : "");
   }
 
+  // The student's "Submit this sheet for review" form, when the page offers it.
+  var submitForm = $("cr-submit");
+  var nicheAuto = true;
+  function topCategory() {
+    var counts = {}, best = "", most = 0;
+    state.rows.forEach(function (r) {
+      if (!r.cat) return;
+      counts[r.cat] = (counts[r.cat] || 0) + 1;
+      if (counts[r.cat] > most) { most = counts[r.cat]; best = r.cat; }
+    });
+    return best;
+  }
+  function renderSubmit() {
+    if (!submitForm) return;
+    var sample = state.source && state.source.sample;
+    submitForm.hidden = !state.rows.length || !!sample;
+    if (submitForm.hidden) return;
+    var withLink = state.rows.filter(function (r) { return r.link; }).length;
+    $("cr-submit-summary").textContent =
+      plural(state.rows.length, "channel") + " from " + (state.source ? state.source.file : "your sheet") +
+      " will be sent to your instructor as your next research attempt. " +
+      (withLink === state.rows.length ? "" : (state.rows.length - withLink) + " without a channel link will appear in the sheet but cannot be checked against the niche rules.");
+    var niche = $("id_sheet-niche");
+    if (niche && nicheAuto) niche.value = topCategory();
+  }
+
   function render() {
     renderFilters();
+    renderSubmit();
     var rows = filtered();
     renderSummary(rows);
     renderBreakdown();
@@ -429,6 +460,7 @@
   // ---- Wiring --------------------------------------------------------------
 
   var drop = $("cr-drop"), input = $("cr-file");
+  if (drop) {
   drop.addEventListener("click", function () { input.click(); });
   drop.addEventListener("keydown", function (e) {
     if (e.target === drop && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); input.click(); }
@@ -451,6 +483,19 @@
   // A file dropped just beside the zone must not navigate away from the page.
   window.addEventListener("dragover", function (e) { e.preventDefault(); });
   window.addEventListener("drop", function (e) { if (!drop.contains(e.target)) e.preventDefault(); });
+  }
+
+  if (submitForm) {
+    var nicheInput = $("id_sheet-niche");
+    if (nicheInput) nicheInput.addEventListener("input", function () { nicheAuto = nicheInput.value.trim() === ""; });
+    submitForm.addEventListener("submit", function () {
+      $("id_sheet-sheet").value = JSON.stringify({
+        file: state.source ? state.source.file : null,
+        sheet: state.source ? state.source.sheet : null,
+        rows: state.rows
+      });
+    });
+  }
 
   var qTimer;
   $("cr-q").addEventListener("input", function (e) {
@@ -465,6 +510,18 @@
   $("cr-prev").addEventListener("click", function () { if (state.page > 1) { state.page--; render(); } });
   $("cr-next").addEventListener("click", function () { state.page++; render(); });
   $("cr-sample").addEventListener("click", loadSample);
+
+  if (READONLY) {
+    try {
+      var submitted = JSON.parse(document.getElementById(READONLY).textContent || "null");
+      if (submitted && Array.isArray(submitted.rows)) {
+        state.rows = submitted.rows;
+        state.source = { file: submitted.file || "Submitted sheet", sheet: submitted.sheet || null };
+      }
+    } catch (e) { /* malformed sheet: show the empty state */ }
+    render();
+    return;
+  }
 
   try {
     var saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");

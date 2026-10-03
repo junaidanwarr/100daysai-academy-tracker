@@ -14,6 +14,7 @@ app_name = "portal"
 urlpatterns = [
     path("portal/", views.overview, name="overview"),
     path("portal/research/", views.research, name="research"),
+    path("portal/research/sheet/", views.research_sheet, name="research_sheet"),
     path("portal/assignments/", views.assignments, name="assignments"),
     path("portal/assignments/<uuid:pk>/", views.assignment_detail, name="assignment_detail"),
     path("portal/activity/", views.activity, name="activity"),

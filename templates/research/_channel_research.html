@@ -4,11 +4,16 @@
   student's My research page. Files are parsed in the browser and never
   uploaded: nothing here reaches the server, and what one person loads is
   remembered on their own device only (keyed by their account).
+
+  Include with `readonly_sheet="<json_script id>"` to show a submitted sheet
+  (no upload, nothing stored), or with `sheet_form` to let a student submit
+  the sheet they loaded as a research attempt.
 {% endcomment %}
 <div class="cr" id="cr-root"
-     data-store-key="channelResearch.v1.{{ user.pk }}"
+     {% if readonly_sheet %}data-readonly="{{ readonly_sheet }}"{% else %}data-store-key="channelResearch.v1.{{ user.pk }}"{% endif %}
      data-sample-url="{% static 'data/research-template-sample.json' %}">
 
+  {% if not readonly_sheet %}
   <div class="cr-drop" id="cr-drop" role="button" tabindex="0" aria-describedby="cr-drop-help">
     <span class="cr-drop-icon" aria-hidden="true">{% icon "upload" "" "lg" %}</span>
     <div class="cr-drop-text">
@@ -23,6 +28,42 @@
     <input type="file" id="cr-file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden>
   </div>
   <div class="cr-status" id="cr-status" aria-live="polite">No file loaded yet.</div>
+  {% endif %}
+
+  {% if sheet_form %}
+  <form method="post" action="{% url 'portal:research_sheet' %}" class="card cr-submit mt-2" id="cr-submit" hidden>
+    {% csrf_token %}
+    <div class="card-header">
+      <div>
+        <h2>{% icon "send" "" "sm" %} Submit this sheet for review</h2>
+        <p id="cr-submit-summary">Your instructor reviews it like any research attempt and sees every channel in it.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ sheet_form.topic.id_for_label }}">{{ sheet_form.topic.label }}<span class="required"> *</span></label>
+          {{ sheet_form.topic }}
+        </div>
+        <div class="field">
+          <label for="{{ sheet_form.niche.id_for_label }}">{{ sheet_form.niche.label }}</label>
+          {{ sheet_form.niche }}
+          <span class="helptext">Filled in from the sheet's main category. Change it if needed.</span>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label for="{{ sheet_form.notes.id_for_label }}">{{ sheet_form.notes.label }}</label>
+          {{ sheet_form.notes }}
+        </div>
+      </div>
+      {{ sheet_form.sheet }}
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">{% icon "send" %} Submit for review</button>
+      </div>
+    </div>
+  </form>
+  {% elif sheet_blocked %}
+  <div class="alert-box alert-info mt-2" role="status">{{ sheet_blocked }}</div>
+  {% endif %}
 
   <h2 class="section-title">{% icon "chart-column" "" "sm" %} Summary <span class="cr-scope" id="cr-scope">Nothing loaded</span></h2>
   <section class="grid grid-stats cr-stats" aria-label="Research summary">
@@ -103,7 +144,7 @@
         <tbody id="cr-body"></tbody>
       </table>
     </div>
-    <div class="empty" id="cr-empty">
+    <div class="empty" id="cr-empty"{% if readonly_sheet %} hidden{% endif %}>
       <p class="empty-title" id="cr-empty-title">Upload a CSV or XLSX file to populate the research table</p>
       <p class="empty-description" id="cr-empty-text">Use the upload area above, or drop a file onto it.</p>
       <button type="button" class="btn-secondary" id="cr-sample">Load the Research Template sample (34 channels)</button>
@@ -119,7 +160,9 @@
   </div>
 </div>
 
-{# Parsers load only on pages that include this partial. #}
+{# Parsers load only where a file can be uploaded. #}
+{% if not readonly_sheet %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.0/papaparse.min.js" defer></script>
+{% endif %}
 <script src="{% static 'js/channel-research.js' %}" defer></script>
