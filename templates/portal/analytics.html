@@ -59,12 +59,8 @@
         {% endif %}
         {% if row.availability.private_reason %}
           <p class="mt-1 mb-0">Detailed analytics unavailable: {{ row.availability.private_reason }}</p>
-        {% elif row.availability.connected_email %}
-          <p class="mt-2 tiny muted mb-0">
-            Connected as {{ row.availability.connected_email }}
-            {% if row.availability.consented_at %} on {{ row.availability.consented_at|date:"d M Y" }}{% endif %}.
-          </p>
         {% endif %}
+        {% include "portal/_analytics_access.html" with channel=row.channel availability=row.availability %}
       </div>
     </div>
   {% endfor %}

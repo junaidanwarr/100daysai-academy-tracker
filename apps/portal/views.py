@@ -40,6 +40,7 @@ from apps.portal.access import student_required, with_student
 from apps.research.forms import ResearchSubmissionForm, SheetSubmissionForm
 from apps.research.models import ResearchSubmission
 from apps.research.services import SubmissionStateError, submit_research
+from apps.youtube import oauth
 from apps.youtube import services as youtube_services
 from apps.youtube.forms import StudentChannelForm
 from apps.youtube.submissions import ChannelSubmissionError, channel_block_reason, submit_student_channel
@@ -383,6 +384,7 @@ def channel_detail(request, student, pk):
             "student": student,
             "channel": channel,
             "availability": youtube_services.availability(channel),
+            "oauth_configured": oauth.is_configured(),
             "videos": Video.objects.filter(channel=channel).order_by(
                 F("published_at").desc(nulls_last=True)
             )[:10],
@@ -483,8 +485,53 @@ def analytics(request, student):
             "rows": rows,
             "connected": sum(1 for r in rows if r["availability"]["private_available"]),
             "sync_configured": youtube_services.public_sync_available(),
+            "oauth_configured": oauth.is_configured(),
         },
     )
+
+
+@with_student
+@require_http_methods(["GET", "POST"])
+def analytics_connect(request, student, pk):
+    """
+    The student grants the academy read access to their own YouTube Analytics.
+    Plain-language consent first; Google's own screen comes after.
+    """
+    channel = get_object_or_404(YoutubeChannel.objects.for_actor(request.user), pk=pk)
+    if request.method == "POST":
+        try:
+            return redirect(youtube_services.start_connection(request.user, channel))
+        except (youtube_services.SyncNotConfigured, oauth.OauthNotConfigured) as exc:
+            messages.warning(request, str(exc))
+            return redirect("portal:channel_detail", pk=channel.pk)
+
+    return render(
+        request,
+        "portal/analytics_connect.html",
+        {
+            "active_nav": "portal:analytics",
+            "student": student,
+            "channel": channel,
+            "oauth_configured": oauth.is_configured(),
+            **oauth.consent_context(include_revenue=youtube_services.track_revenue()),
+        },
+    )
+
+
+@with_student
+@require_POST
+def analytics_disconnect(request, student, pk):
+    """Withdrawing consent needs nobody's permission but the student's."""
+    channel = get_object_or_404(YoutubeChannel.objects.for_actor(request.user), pk=pk)
+    if youtube_services.disconnect(request.user, channel, reason="Disconnected by the student."):
+        messages.success(
+            request,
+            "Analytics disconnected. Figures already collected are kept; no new private "
+            "metrics will be fetched.",
+        )
+    else:
+        messages.info(request, "There was no active analytics connection to disconnect.")
+    return redirect("portal:channel_detail", pk=channel.pk)
 
 
 # --- Notifications ----------------------------------------------------------

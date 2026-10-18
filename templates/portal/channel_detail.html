@@ -39,6 +39,14 @@
   </div>
 </div>
 
+<div class="card mt-2">
+  <div class="card-header"><div><h2>Analytics access</h2><p>Watch time, impressions and retention need your consent as the channel owner.</p></div></div>
+  <div class="card-body">
+    {% if not availability.private_available %}<p class="mb-0">{% tone_badge "Not connected" "amber" %}</p>{% endif %}
+    {% include "portal/_analytics_access.html" %}
+  </div>
+</div>
+
 {% comment %}
   Say why a figure is missing rather than showing a blank. "We have not been
   granted access" and "the number is zero" are completely different facts.

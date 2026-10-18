@@ -13,7 +13,7 @@ built today (Phases 1–3). Sections still to come are listed at the end.
 | **Super Admin** | Everything: batches, enrolment, portal logins, assignments, research review, adding and confirming channels, every student |
 | **Instructor** | Their assigned students only: update records and status, review research and assignments, review and confirm channels, work alerts. Cannot enrol students, issue logins or add channels from the console |
 | **Management (read-only)** | Sees every student and report; changes nothing |
-| **Student** | Their own portal: research, assignments, submitting their channel, roadmap, videos, analytics, notifications |
+| **Student** | Their own portal: research, assignments, submitting their channel, connecting its analytics, roadmap, videos, analytics, notifications |
 
 Everyone can change their own password from the key icon in the top bar, or the
 **Change password** link at the foot of the sidebar.
@@ -176,8 +176,11 @@ status**: Content Production Started, then Active.
   video's views, likes and comments. Needs the YouTube API key. Runs for every
   channel with a channel ID, including one still under review.
 - **Private analytics** — watch time, click-through rate, retention, revenue.
-  Staff open the channel → **Connect analytics** → the channel owner signs in
-  with Google and consents. Read-only, and can be disconnected at any time.
+  The student opens **My analytics** (or the channel under **My channels**) →
+  **Connect analytics**, reads what the academy will see, and signs in with the
+  Google account that owns the channel. Read-only; the student can
+  **Disconnect** at any time. Staff see whether it is connected, and with which
+  Google account, on the channel page.
 - Videos appear on their own after each sync; nobody types them in.
 - Staff see it on the channel page, **Videos** and **Analytics**; the student on
   **My channels**, **My videos** and **My analytics**. **Sync now** fetches

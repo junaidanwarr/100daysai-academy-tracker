@@ -31,7 +31,7 @@ from apps.academy.activity import record_activity
 from apps.core.audit import write_audit
 from apps.core.context import system_actor
 from apps.core.crypto import decrypt, encrypt
-from apps.core.enums import ActivityKind, AuditAction, MetricSource, SyncCadence, SyncStatus, VideoType
+from apps.core.enums import ActivityKind, AuditAction, MetricSource, SyncCadence, SyncStatus, UserRole, VideoType
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import assert_can
 from apps.core.settings_service import YOUTUBE_SYNC_CADENCE, get_setting
@@ -155,9 +155,27 @@ def analytics_window(today: date | None = None) -> tuple[date, date]:
 # --- Consent lifecycle ------------------------------------------------------
 
 
+def owns_channel(actor, channel: YoutubeChannel) -> bool:
+    """True when the actor is the student this channel belongs to."""
+    if getattr(actor, "role", None) != UserRole.STUDENT:
+        return False
+    profile = getattr(actor, "student_profile", None)
+    return bool(profile and not profile.deleted_at and profile.pk == channel.student_id)
+
+
+def assert_may_manage_consent(actor, channel: YoutubeChannel) -> None:
+    """
+    Consent belongs to the channel owner, so the owning student may grant or
+    withdraw it from their portal. Staff keep the ``channel.update`` route.
+    """
+    if owns_channel(actor, channel):
+        return
+    assert_can(actor.role, "channel", "update")
+
+
 def start_connection(actor, channel: YoutubeChannel) -> str:
     """The consent URL for this channel. The student is the one who must click it."""
-    assert_can(actor.role, "channel", "update")
+    assert_may_manage_consent(actor, channel)
     if not channel.youtube_channel_id:
         raise SyncNotConfigured(
             "Record the channel's YouTube channel ID before connecting analytics — "
@@ -175,7 +193,7 @@ def complete_connection(actor, channel: YoutubeChannel, code: str, *, ip_address
     student who authorizes the wrong account would otherwise get a grant that
     quietly returns nothing for the life of the batch.
     """
-    assert_can(actor.role, "channel", "update")
+    assert_may_manage_consent(actor, channel)
     token = oauth.exchange_code(code)
 
     if not token.refresh_token:
@@ -244,7 +262,7 @@ def disconnect(actor, channel: YoutubeChannel, *, reason: str = "Disconnected by
     record of what was true when it was measured, and deleting them would erase
     a student's own progress alongside the consent.
     """
-    assert_can(actor.role, "channel", "update")
+    assert_may_manage_consent(actor, channel)
     grant = getattr(channel, "oauth_grant", None)
     if not grant or grant.revoked_at:
         return False
