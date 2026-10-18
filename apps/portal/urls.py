@@ -24,6 +24,8 @@ urlpatterns = [
     path("portal/videos/", views.videos, name="videos"),
     path("portal/videos/<uuid:pk>/", views.video_detail, name="video_detail"),
     path("portal/analytics/", views.analytics, name="analytics"),
+    path("portal/channels/<uuid:pk>/analytics/connect/", views.analytics_connect, name="analytics_connect"),
+    path("portal/channels/<uuid:pk>/analytics/disconnect/", views.analytics_disconnect, name="analytics_disconnect"),
     path("portal/notifications/", views.notifications, name="notifications"),
     path("portal/notifications/read/", views.mark_notifications_read, name="mark_notifications_read"),
     *[

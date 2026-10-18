@@ -200,9 +200,16 @@
         {% else %}
           <p class="detail-value">{% tone_badge "Not connected" "amber" %}</p>
           <p class="tiny mt-1">{{ availability.private_reason }}</p>
-          {% if can_update and oauth_configured and channel.youtube_channel_id %}
-            <a href="{% url 'youtube:analytics_connect' channel.pk %}" class="btn-primary mt-2">Connect analytics</a>
-          {% endif %}
+          <p class="tiny mt-1">
+            {% if not oauth_configured %}
+              Google OAuth is not configured on this deployment yet, so the student cannot connect.
+            {% elif not channel.youtube_channel_id %}
+              Add the channel ID first; the student can connect once it is recorded.
+            {% else %}
+              The student connects this themselves from <strong>My analytics</strong> in their portal,
+              signed in with the Google account that owns the channel.
+            {% endif %}
+          </p>
         {% endif %}
       </div>
     </div>

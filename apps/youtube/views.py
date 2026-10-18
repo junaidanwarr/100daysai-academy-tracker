@@ -1,16 +1,18 @@
 from django.conf import settings as dj_settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from apps.core.access import staff_console
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Count, F, Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST, require_http_methods
 
 from apps.academy.activity import record_activity
 from apps.core.audit import diff_fields, snapshot, write_audit
-from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, MetricSource, SyncStatus, VideoType
+from apps.core.enums import ActivityKind, AuditAction, ChannelStatus, MetricSource, SyncStatus, UserRole, VideoType
 from apps.core.middleware import current_request_meta
 from apps.core.permissions import can
 from apps.youtube import oauth, services
@@ -293,19 +295,28 @@ def analytics_connect(request, pk):
     )
 
 
-@staff_console
+@login_required
 def analytics_callback(request):
     """
-    Google's redirect target. The channel comes from the signed state, never
-    from a query parameter the caller could choose.
+    Google's redirect target, shared by the portal and the console — it must
+    match GOOGLE_OAUTH_REDIRECT_URI exactly, so there is only one. The channel
+    comes from the signed state, never from a query parameter the caller could
+    choose, and the state must have been issued to the person now signed in.
     """
+    is_student = request.user.role == UserRole.STUDENT
+    fallback = "portal:analytics" if is_student else "youtube:channel_list"
     try:
         payload = oauth.read_state(request.GET.get("state", ""))
     except oauth.OauthStateError as exc:
         messages.error(request, str(exc))
-        return redirect("youtube:channel_list")
+        return redirect(fallback)
+
+    if payload.get("user") != str(request.user.pk):
+        messages.error(request, "That authorization was started by someone else. Start the connection again.")
+        return redirect(fallback)
 
     channel = get_object_or_404(YoutubeChannel.objects.for_actor(request.user), pk=payload["channel"])
+    back = reverse("portal:channel_detail", args=[channel.pk]) if is_student else channel.get_absolute_url()
 
     if request.GET.get("error"):
         messages.info(
@@ -313,12 +324,12 @@ def analytics_callback(request):
             "Analytics access was not granted, so only public figures will be available. "
             "You can connect at any time.",
         )
-        return redirect(channel.get_absolute_url())
+        return redirect(back)
 
     code = request.GET.get("code", "")
     if not code:
         messages.error(request, "Google did not return an authorization code. Please try again.")
-        return redirect(channel.get_absolute_url())
+        return redirect(back)
 
     try:
         services.complete_connection(
@@ -326,17 +337,17 @@ def analytics_callback(request):
         )
     except (services.SyncNotConfigured, oauth.OauthNotConfigured) as exc:
         messages.error(request, str(exc))
-        return redirect(channel.get_absolute_url())
+        return redirect(back)
     except YoutubeApiError as exc:
         messages.error(request, f"Google rejected the authorization: {exc}")
-        return redirect(channel.get_absolute_url())
+        return redirect(back)
 
     messages.success(
         request,
         "Analytics connected. Private metrics appear after the next sync, and you can "
         "disconnect at any time from this page.",
     )
-    return redirect(channel.get_absolute_url())
+    return redirect(back)
 
 
 @staff_console

@@ -1,0 +1,22 @@
+{% load academy_tags %}
+{% comment %}
+  The student's own consent controls for one channel. Needs `channel`,
+  `availability` and `oauth_configured`.
+{% endcomment %}
+{% if availability.private_available %}
+  <div class="flex items-center gap-1 mt-2" style="flex-wrap:wrap">
+    {% tone_badge "Analytics connected" "emerald" %}
+    <span class="tiny muted">
+      as {{ availability.connected_email|dash }}{% if availability.consented_at %} on {{ availability.consented_at|date:"d M Y" }}{% endif %}
+    </span>
+    <form method="post" action="{% url 'portal:analytics_disconnect' channel.pk %}" class="mb-0">
+      {% csrf_token %}
+      <button type="submit" class="btn-secondary btn-sm">{% icon "unlink" %} Disconnect</button>
+    </form>
+  </div>
+{% elif oauth_configured and channel.youtube_channel_id %}
+  <div class="flex items-center gap-1 mt-2" style="flex-wrap:wrap">
+    <a href="{% url 'portal:analytics_connect' channel.pk %}" class="btn-primary">{% icon "link" %} Connect analytics</a>
+    <span class="tiny muted">Unlocks watch time, impressions, click-through rate and retention. Takes a minute.</span>
+  </div>
+{% endif %}

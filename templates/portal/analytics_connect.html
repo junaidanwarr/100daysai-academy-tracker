@@ -1,0 +1,85 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}Connect analytics · {{ channel.channel_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Connect YouTube Analytics</h1>
+    <p class="page-description">
+      For <a href="{% url 'portal:channel_detail' channel.pk %}">{{ channel.channel_name }}</a>
+    </p>
+  </div>
+</div>
+
+<div class="grid grid-3">
+  <div class="span-2 card">
+    <div class="card-header">
+      <div>
+        <h2>What you are agreeing to</h2>
+        <p>Read this before you continue. Consent version {{ consent_version }}.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="detail-label">The academy will be able to read</p>
+      <ul class="list" style="margin-top:0.375rem">
+        {% for item in will_read %}
+          <li style="padding:0.25rem 0;border:none"><span class="availability-dot on">●</span> <span class="muted">{{ item }}</span></li>
+        {% endfor %}
+      </ul>
+
+      <p class="detail-label mt-2">What it cannot do</p>
+      <ul class="list" style="margin-top:0.375rem">
+        {% for item in limits %}
+          <li style="padding:0.25rem 0;border:none"><span class="muted">{{ item }}</span></li>
+        {% endfor %}
+      </ul>
+
+      <div class="mt-2" style="border-top:1px solid var(--slate-100);padding-top:1rem">
+        <p class="detail-label">Google permissions requested</p>
+        <ul class="list" style="margin-top:0.375rem">
+          {% for scope in scopes %}
+            <li style="padding:0.125rem 0;border:none"><span class="tiny mono">{{ scope }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      {% if not channel.youtube_channel_id %}
+        <div class="alert-box alert-info mt-2">
+          This channel has no channel ID on record yet, so there is nothing to connect. Your
+          instructor adds it when they check the channel.
+        </div>
+      {% elif oauth_configured %}
+        <form method="post" class="mt-2">
+          {% csrf_token %}
+          <button type="submit" class="btn-primary">{% icon "external-link" %} Continue to Google</button>
+          <a href="{% url 'portal:channel_detail' channel.pk %}" class="btn-secondary">Cancel</a>
+        </form>
+        <p class="tiny mt-1">
+          Sign in with the Google account that owns this channel. Nothing is stored until you
+          approve it there.
+        </p>
+      {% else %}
+        <div class="alert-box alert-warning mt-2">
+          Google sign-in is not set up for the academy yet, so this cannot be connected. Ask your
+          instructor to set it up.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div><h2>Why this is needed</h2></div></div>
+    <div class="card-body">
+      <p class="muted">
+        Subscribers, views and upload dates are public and need nothing from you. Impressions,
+        click-through rate, watch time, average view duration, audience retention, traffic sources
+        and revenue are private to you as the channel owner. There is no other lawful route to them.
+      </p>
+      <p class="muted mt-2">
+        You can disconnect at any time from your channel page, without asking anyone.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
