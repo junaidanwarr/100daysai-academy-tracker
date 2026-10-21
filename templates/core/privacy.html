@@ -1,0 +1,104 @@
+{% extends "core/_legal.html" %}
+{% block title %}Privacy policy · 100DaysAI Academy Tracker{% endblock %}
+{% block legal %}
+<h1>Privacy policy</h1>
+<p>
+  The 100DaysAI Academy Tracker ("the tracker") is the system 100DaysAI Academy
+  uses to follow each student from enrolment and niche research to a live
+  YouTube channel. This page explains what it stores, why, who can see it, and
+  how to have it removed.
+</p>
+
+<h2>What we store</h2>
+<ul>
+  <li><strong>Enrolment details</strong> the academy enters: your name, guardian, email, phone, city, country, batch, instructor and dates.</li>
+  <li><strong>Your work</strong>: niche research, channel research sheets, assignment hand-ins, and the scores and feedback you receive.</li>
+  <li><strong>Your channel record</strong>: the channel name, link and ID you submit, its niche and upload plan.</li>
+  <li><strong>Public YouTube figures</strong> for that channel: subscribers, views, video count and each video's views, likes and comments. Anyone can see these on YouTube.</li>
+  <li><strong>YouTube Analytics</strong>, only if you choose to connect it: watch time, impressions, click-through rate, average view duration, audience retention and traffic sources. Revenue is read only if the academy has turned that on and you approve it.</li>
+  <li><strong>Account and security records</strong>: your sign-in email, sign-in times, and an audit log of changes. Passwords are stored only as secure hashes.</li>
+</ul>
+
+<h2>YouTube and Google data</h2>
+<p>
+  The tracker uses YouTube API Services. By connecting your channel you also
+  agree to the <a href="https://www.youtube.com/t/terms" rel="noopener noreferrer" target="_blank">YouTube Terms of Service</a>,
+  and Google's handling of your data is covered by the
+  <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Google Privacy Policy</a>.
+</p>
+<p>When you click <strong>Connect analytics</strong> and approve it at Google, the tracker receives read-only access:</p>
+<ul>
+  <li><code>youtube.readonly</code>: to confirm the Google account owns the channel and to read its videos.</li>
+  <li><code>yt-analytics.readonly</code>: to read the channel's analytics listed above.</li>
+  <li><code>openid</code> and <code>email</code>: to record which Google account gave consent.</li>
+</ul>
+<p>
+  The tracker <strong>cannot</strong> upload, edit or delete videos, change channel
+  settings, post comments, or read your email, Drive or any other Google data.
+  The access token is stored encrypted and used only to fetch these figures.
+</p>
+<p>
+  The tracker's use of information received from Google APIs adheres to the
+  <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener noreferrer" target="_blank">Google API Services User Data Policy</a>,
+  including the Limited Use requirements. YouTube data is used only to show you
+  and your instructors your channel's progress. It is never sold, never used
+  for advertising, and never shared outside the academy.
+</p>
+
+<h2>Why we use it</h2>
+<p>
+  To run the course: track research and assignments, confirm channels, show
+  your progress, and alert your instructor when you may need help (for example
+  a missed deadline or a channel with no uploads).
+</p>
+
+<h2>Who can see it</h2>
+<ul>
+  <li><strong>You</strong>, in your own portal.</li>
+  <li><strong>Your assigned instructor</strong> and the academy's administrators.</li>
+  <li><strong>Academy management</strong>, read-only.</li>
+</ul>
+<p>Other students cannot see your records. We do not sell or rent personal data to anyone.</p>
+<p>
+  Service providers process data on the academy's behalf only to run the
+  tracker: the hosting provider, Google (YouTube APIs), and, where enabled, an
+  email delivery service for alerts.
+</p>
+
+<h2>Withdrawing YouTube access</h2>
+<p>You can stop the tracker reading your analytics at any time, either way:</p>
+<ul>
+  <li>In the tracker: <strong>My channels</strong> → your channel → <strong>Disconnect</strong>.</li>
+  <li>At Google: <a href="https://myaccount.google.com/permissions" rel="noopener noreferrer" target="_blank">myaccount.google.com/permissions</a> → remove the 100DaysAI Academy Tracker.</li>
+</ul>
+<p>
+  Disconnecting stops new analytics straight away and deletes the stored access
+  token. Figures already collected stay as part of your course record unless you
+  ask for them to be deleted.
+</p>
+
+<h2>How long we keep it</h2>
+<p>
+  For as long as you are enrolled and for the academy's record of your batch
+  afterwards. YouTube data obtained through the API is refreshed regularly and
+  deleted when it is no longer needed for the course, or on request.
+</p>
+
+<h2>Your choices</h2>
+<p>
+  You can ask to see, correct or delete your data, including all YouTube data
+  the tracker holds about your channel.
+  {% if contact_email %}Email <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %}Contact your academy administrator.{% endif %}
+  We reply within 30 days.
+</p>
+
+<h2>Cookies</h2>
+<p>
+  The tracker uses only the cookies it needs to keep you signed in and protect
+  forms. There are no advertising or tracking cookies. A research sheet you load
+  without submitting stays in your own browser and is not sent to the academy.
+</p>
+
+<h2>Changes</h2>
+<p>If this policy changes, the date below changes and significant changes are announced in the portal.</p>
+{% endblock %}

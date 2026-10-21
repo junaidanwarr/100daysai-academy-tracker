@@ -1,0 +1,52 @@
+{% extends "core/_legal.html" %}
+{% block title %}Terms of service · 100DaysAI Academy Tracker{% endblock %}
+{% block legal %}
+<h1>Terms of service</h1>
+<p>
+  These terms cover your use of the 100DaysAI Academy Tracker ("the tracker"),
+  the system 100DaysAI Academy uses to follow students through the course.
+</p>
+
+<h2>Who may use it</h2>
+<p>
+  Enrolled students and academy staff, with an account issued by the academy.
+  Keep your password to yourself; you are responsible for activity on your account.
+</p>
+
+<h2>Your content</h2>
+<p>
+  Research, sheets, assignment work and channel details you submit stay yours.
+  You allow the academy to store and review them for the course. Submit only
+  channels you own or manage.
+</p>
+
+<h2>YouTube</h2>
+<p>
+  The tracker uses YouTube API Services. By connecting a channel you agree to be
+  bound by the <a href="https://www.youtube.com/t/terms" rel="noopener noreferrer" target="_blank">YouTube Terms of Service</a>.
+  Google's use of your data is described in the
+  <a href="https://policies.google.com/privacy" rel="noopener noreferrer" target="_blank">Google Privacy Policy</a>,
+  and ours in the <a href="{% url 'core:privacy' %}">tracker's privacy policy</a>.
+  Connecting analytics is optional and can be withdrawn at any time.
+</p>
+
+<h2>Acceptable use</h2>
+<ul>
+  <li>Do not try to reach other students' records or the staff console.</li>
+  <li>Do not submit a channel that is not yours.</li>
+  <li>Do not upload files meant to harm the system or other users.</li>
+</ul>
+<p>The academy may suspend an account that breaks these rules.</p>
+
+<h2>No guarantee</h2>
+<p>
+  The tracker is provided as is. Figures come from YouTube and can be delayed or
+  incomplete. The academy is not responsible for your channel's results.
+</p>
+
+<h2>Contact</h2>
+<p>
+  Questions about these terms:
+  {% if contact_email %}<a href="mailto:{{ contact_email }}">{{ contact_email }}</a>.{% else %}contact your academy administrator.{% endif %}
+</p>
+{% endblock %}

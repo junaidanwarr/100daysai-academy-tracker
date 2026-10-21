@@ -12,7 +12,9 @@ from django.urls import reverse
 from apps.accounts.services import mfa_satisfied
 
 # Paths a half-authenticated user may still reach.
-EXEMPT_PREFIXES = ("/mfa", "/logout", "/login", "/static", "/media", "/api/cron", "/api/webhooks")
+EXEMPT_PREFIXES = (
+    "/mfa", "/logout", "/login", "/static", "/media", "/api/cron", "/api/webhooks", "/privacy", "/terms",
+)
 
 
 class MfaEnforcementMiddleware:
@@ -37,6 +39,7 @@ class MfaEnforcementMiddleware:
 # not on the list: an issued password must not open any door but this one.
 PASSWORD_CHANGE_EXEMPT_PREFIXES = (
     "/password", "/logout", "/login", "/mfa", "/static", "/media", "/api/cron", "/api/webhooks",
+    "/privacy", "/terms",
 )
 
 

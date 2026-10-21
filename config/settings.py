@@ -273,6 +273,8 @@ YOUTUBE_TRACK_REVENUE = env_bool("YOUTUBE_TRACK_REVENUE", False)
 
 RESEND_API_KEY = env("RESEND_API_KEY", "")
 NOTIFY_FROM_EMAIL = env("NOTIFY_FROM_EMAIL", "academy@100daysai.example")
+# Shown on the public privacy policy and terms pages as the contact address.
+PRIVACY_CONTACT_EMAIL = env("PRIVACY_CONTACT_EMAIL", "")
 TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", "")
 TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", "")
 TWILIO_FROM_NUMBER = env("TWILIO_FROM_NUMBER", "")
