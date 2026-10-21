@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
+from django.conf import settings as dj_settings
 from django.contrib import messages
 from apps.core.access import staff_console
 from django.core.exceptions import PermissionDenied
@@ -314,3 +315,22 @@ def cron_endpoint(request, job: str):
         return JsonResponse({"job": job, "ok": True, "duration_ms": duration, "result": result})
     except Exception as exc:  # noqa: BLE001
         return JsonResponse({"job": job, "ok": False, "error": str(exc)}, status=500)
+
+
+# --- Public legal pages -----------------------------------------------------
+# Reachable without signing in: Google requires a public privacy policy and
+# terms page before an app that reads YouTube data can be published.
+
+LEGAL_UPDATED = "21 October 2026"
+
+
+def _legal_context():
+    return {"contact_email": dj_settings.PRIVACY_CONTACT_EMAIL, "updated": LEGAL_UPDATED}
+
+
+def privacy(request):
+    return render(request, "core/privacy.html", _legal_context())
+
+
+def terms(request):
+    return render(request, "core/terms.html", _legal_context())

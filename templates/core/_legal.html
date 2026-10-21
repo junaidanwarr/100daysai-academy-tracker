@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% comment %}
+  Public layout for the privacy policy and terms. No sidebar and no sign-in:
+  Google and students must be able to read these without an account.
+{% endcomment %}
+{% block body %}
+<div class="legal-shell">
+  <header class="legal-head">
+    <a href="{% url 'accounts:login' %}" class="legal-brand"><span class="brand-mark" aria-hidden="true">100</span> 100DaysAI Academy Tracker</a>
+    <nav class="legal-nav" aria-label="Legal">
+      <a href="{% url 'core:privacy' %}"{% if request.resolver_match.url_name == "privacy" %} aria-current="page"{% endif %}>Privacy policy</a>
+      <a href="{% url 'core:terms' %}"{% if request.resolver_match.url_name == "terms" %} aria-current="page"{% endif %}>Terms of service</a>
+    </nav>
+  </header>
+  <article class="card legal-doc">
+    <div class="card-body">
+      {% block legal %}{% endblock %}
+      <p class="muted legal-updated">Last updated {{ updated }}.</p>
+    </div>
+  </article>
+</div>
+{% endblock %}
