@@ -21,6 +21,7 @@ urlpatterns = [
     path("portal/channels/", views.channels, name="channels"),
     path("portal/channels/new/", views.channel_submit, name="channel_submit"),
     path("portal/channels/<uuid:pk>/", views.channel_detail, name="channel_detail"),
+    path("portal/channels/<uuid:pk>/edit/", views.channel_edit, name="channel_edit"),
     path("portal/videos/", views.videos, name="videos"),
     path("portal/videos/<uuid:pk>/", views.video_detail, name="video_detail"),
     path("portal/analytics/", views.analytics, name="analytics"),

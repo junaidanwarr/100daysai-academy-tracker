@@ -30,7 +30,12 @@
             {% if c.channel_creation_date %} · created {{ c.channel_creation_date|date:"d M Y" }}{% endif %}
           </p>
         </div>
-        {% channel_badge c.status c.get_status_display %}
+        <div class="flex items-center gap-1">
+          {% channel_badge c.status c.get_status_display %}
+          {% if c.status not in frozen_statuses %}
+            <a href="{% url 'portal:channel_edit' c.pk %}" class="btn-secondary btn-sm" aria-label="Edit {{ c.channel_name }}">{% icon "pencil" %} Edit</a>
+          {% endif %}
+        </div>
       </li>
     {% endfor %}
   </ul>

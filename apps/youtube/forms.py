@@ -122,11 +122,24 @@ class StudentChannelForm(forms.ModelForm):
             "youtube_channel_id": forms.TextInput(attrs={"placeholder": "UC…"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    # Which channel this is. Locked once staff have confirmed it, so a confirmed
+    # record cannot be quietly pointed at a different channel.
+    IDENTITY_FIELDS = ("channel_url", "youtube_channel_id")
+
+    def __init__(self, *args, lock_identity: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["channel_url"].required = True
         for field in self.fields.values():
             field.widget.attrs.setdefault("class", "input")
+        if lock_identity:
+            for name in self.IDENTITY_FIELDS:
+                field = self.fields[name]
+                field.disabled = True
+                field.help_text = "Confirmed by your instructor. Ask them if this needs to change."
+
+    def _others(self, manager):
+        """Channels other than the one being edited."""
+        return manager.exclude(pk=self.instance.pk) if self.instance.pk else manager
 
     def clean_youtube_channel_id(self):
         value = (self.cleaned_data.get("youtube_channel_id") or "").strip()
@@ -135,7 +148,7 @@ class StudentChannelForm(forms.ModelForm):
         if not CHANNEL_ID_PATTERN.match(value):
             raise forms.ValidationError("A YouTube channel ID starts with UC and is 24 characters long.")
         # Soft-deleted channels still hold the unique ID, so check them too.
-        if YoutubeChannel.all_objects.filter(youtube_channel_id=value).exists():
+        if self._others(YoutubeChannel.all_objects).filter(youtube_channel_id=value).exists():
             raise forms.ValidationError(
                 "This channel is already registered in the academy. Speak to your instructor if it is yours."
             )
@@ -145,7 +158,7 @@ class StudentChannelForm(forms.ModelForm):
         value = (self.cleaned_data.get("channel_url") or "").strip()
         if not re.match(r"^https?://(www\.|m\.)?(youtube\.com|youtu\.be)/", value, re.I):
             raise forms.ValidationError("Enter the link to your channel on youtube.com.")
-        if YoutubeChannel.objects.filter(channel_url__iexact=value).exists():
+        if self._others(YoutubeChannel.objects).filter(channel_url__iexact=value).exists():
             raise forms.ValidationError(
                 "This channel link is already registered in the academy. Speak to your instructor if it is yours."
             )

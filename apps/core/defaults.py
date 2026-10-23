@@ -27,7 +27,7 @@ SETTINGS = [
     ("no_upload_days", 10, "Upload gap limit (days)", "int", "monitoring", "Days without an upload before the channel is flagged."),
     ("min_videos_per_week", 3, "Minimum videos per week", "int", "monitoring", "Baseline upload target used by performance scoring."),
     ("youtube_sync_cadence", "DAILY", "YouTube sync cadence", "string", "integrations", "EVERY_6_HOURS, EVERY_12_HOURS, DAILY, WEEKLY or MANUAL."),
-    ("competitor_min_videos", 20, "Competitor min videos", "int", "research", "Fewest uploads a reference channel may have and still prove the niche."),
+    ("competitor_min_videos", 1, "Competitor min videos", "int", "research", "Fewest uploads a reference channel may have and still prove the niche."),
     ("competitor_max_videos", 30, "Competitor max videos", "int", "research", "Most uploads a reference channel may have. Beyond this it is an established channel, not a fresh proof."),
     ("competitor_min_subs_view_ratio", "0.5", "Competitor min subs/views %", "string", "research", "Subscribers as a minimum percentage of views. 0.5 means 1,000 views should have produced 5 subscribers."),
     ("competitor_min_age_days", 60, "Competitor min age (days)", "int", "research", "Oldest video must be at least this old."),

@@ -95,7 +95,74 @@ def submit_student_channel(actor, student, form) -> YoutubeChannel:
     return channel
 
 
-def _notify_staff(student, channel: YoutubeChannel) -> None:
+# Statuses in which the student may no longer touch the record at all.
+FROZEN_STATUSES = (ChannelStatus.SUSPENDED, ChannelStatus.TERMINATED, ChannelStatus.COMPLETED)
+
+STUDENT_EDITABLE_FIELDS = [
+    "channel_name", "channel_url", "youtube_channel_id", "channel_creation_date",
+    "content_type", "primary_language", "upload_schedule", "notes",
+]
+
+
+def identity_locked(channel: YoutubeChannel) -> bool:
+    """Link and channel ID stay editable only until staff have looked at it."""
+    return channel.status not in (ChannelStatus.UNDER_REVIEW, ChannelStatus.PENDING)
+
+
+def edit_block_reason(channel: YoutubeChannel) -> str | None:
+    if channel.status in FROZEN_STATUSES:
+        return f"This channel is {channel.get_status_display().lower()}, so it can no longer be edited."
+    return None
+
+
+@transaction.atomic
+def update_student_channel(actor, student, channel: YoutubeChannel, form) -> list[str]:
+    """
+    Saves a student's edit of their own channel and returns the fields that
+    changed. Staff are told, and the audit log records the difference.
+    """
+    from apps.core.audit import diff_fields, snapshot
+
+    if actor.role != UserRole.STUDENT or student.user_id != actor.pk or channel.student_id != student.pk:
+        raise ChannelSubmissionError("Only the student can edit their own channel here.")
+    blocked = edit_block_reason(channel)
+    if blocked:
+        raise ChannelSubmissionError(blocked)
+
+    def fields(instance):
+        # A blank text box and an empty column are the same answer.
+        return {k: (None if v == "" else v) for k, v in snapshot(instance, STUDENT_EDITABLE_FIELDS).items()}
+
+    before = fields(YoutubeChannel.objects.get(pk=channel.pk))
+    channel = form.save()
+    changed_before, changed_after = diff_fields(before, fields(channel))
+    if not changed_after:
+        return []
+
+    # An authorization belongs to the channel it was granted for. A different
+    # channel ID means a different channel, so the old grant must not be used.
+    if "youtube_channel_id" in changed_after:
+        grant = getattr(channel, "oauth_grant", None)
+        if grant and not grant.revoked_at:
+            from apps.youtube import services
+
+            services.disconnect(actor, channel, reason="Channel ID changed by the student.")
+
+    write_audit(
+        actor=actor,
+        action=AuditAction.UPDATE,
+        entity_type="YoutubeChannel",
+        entity_id=channel.pk,
+        summary=f'{student.full_name} ({student.enrollment_id}) edited channel "{channel.channel_name}"',
+        before=changed_before,
+        after=changed_after,
+        **current_request_meta(),
+    )
+    _notify_staff(student, channel, edited=sorted(changed_after))
+    return sorted(changed_after)
+
+
+def _notify_staff(student, channel: YoutubeChannel, edited: list[str] | None = None) -> None:
     from apps.accounts.models import User
     from apps.monitoring.models import Notification
 
@@ -110,9 +177,13 @@ def _notify_staff(student, channel: YoutubeChannel) -> None:
         Notification.objects.create(
             user_id=user_id,
             channel=NotificationChannel.IN_APP,
-            title=f"Channel to review: {channel.channel_name}",
+            title=(f"Channel edited: {channel.channel_name}" if edited else f"Channel to review: {channel.channel_name}"),
             body=(
-                f"{student.full_name} ({student.enrollment_id}) submitted their YouTube channel. "
+                f"{student.full_name} ({student.enrollment_id}) updated their channel: "
+                + ", ".join(YoutubeChannel._meta.get_field(name).verbose_name for name in edited)
+                + "."
+                if edited
+                else f"{student.full_name} ({student.enrollment_id}) submitted their YouTube channel. "
                 "Check it matches the approved niche, then set its status."
             ),
             link_url=channel.get_absolute_url(),

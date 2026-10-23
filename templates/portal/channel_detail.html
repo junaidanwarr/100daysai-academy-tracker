@@ -11,7 +11,10 @@
       {% if channel.channel_url %} · <a href="{{ channel.channel_url }}" rel="noopener noreferrer" target="_blank">Open on YouTube</a>{% endif %}
     </p>
   </div>
-  {% channel_badge channel.status channel.get_status_display %}
+  <div class="flex items-center gap-1">
+    {% channel_badge channel.status channel.get_status_display %}
+    {% if can_edit %}<a href="{% url 'portal:channel_edit' channel.pk %}" class="btn-secondary btn-sm">{% icon "pencil" %} Edit channel</a>{% endif %}
+  </div>
 </div>
 
 {% if channel.status == "UNDER_REVIEW" %}
