@@ -1,0 +1,32 @@
+{% extends "portal/base.html" %}
+{% load academy_tags %}
+{% block portal_title %}Edit {{ channel.channel_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <p class="tiny"><a href="{% url 'portal:channel_detail' channel.pk %}">← {{ channel.channel_name }}</a></p>
+    <h1>Edit channel</h1>
+    <p class="page-description">
+      Correct the details you submitted. Your instructor is told what you changed.
+      {% if locked %}
+        The link and channel ID are locked because your instructor has confirmed this channel.
+      {% endif %}
+    </p>
+  </div>
+  {% channel_badge channel.status channel.get_status_display %}
+</div>
+
+<div class="card" style="max-width:48rem">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% include "_form.html" with wide_fields="notes,channel_url" %}
+      <div class="form-actions">
+        <button type="submit" class="btn-primary">{% icon "check" %} Save changes</button>
+        <a href="{% url 'portal:channel_detail' channel.pk %}" class="btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

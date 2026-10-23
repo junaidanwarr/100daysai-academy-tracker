@@ -4,13 +4,13 @@ Niche-validation rules for the competitor channels in a research submission.
 The subjective criteria (niche clarity, audience definition) ask an instructor
 for a judgement. These four ask arithmetic, and arithmetic can be checked:
 
-1. **Video count** — a proven-format channel has 20-30 uploads. Fewer is too
-   early to call; many more suggests an established channel whose results a new
-   student cannot expect to reproduce.
+1. **Video count** — a proven-format channel has 1-30 uploads. A channel with
+   none proves nothing; many more suggests an established channel whose results
+   a new student cannot expect to reproduce.
 2. **Subscribers as a share of views** — at least 0.5% (1,000 views should have
    produced about 5 subscribers). Views that convert nobody are views the format
    did not earn.
-3. **Channel age** — the oldest video is 2-3 months old. This is the whole point
+3. **Channel age** — the oldest video is 60-90 days old. This is the whole point
    of the exercise: a channel that reached these numbers *recently* proves the
    niche works now, not that it worked in 2021.
 4. **Consistent growth** — views climb or hold steady. One viral video carrying
@@ -31,7 +31,7 @@ from datetime import date
 
 # Defaults, overridden by the SystemSetting values the caller passes in.
 DEFAULTS = {
-    "min_videos": 20,
+    "min_videos": 1,
     "max_videos": 30,
     "min_subs_view_ratio_percent": 0.5,
     "min_age_days": 60,
@@ -132,7 +132,7 @@ def check_video_count(video_count: int | None, thresholds: dict | None = None) -
     if video_count < low:
         return RuleResult(
             "video_count", label, FAIL,
-            f"{video_count} videos — below {low}. Too early to judge whether the format works.",
+            f"{video_count} videos — below {low}. Nothing published yet to judge the format by.",
         )
     if video_count > high:
         return RuleResult(

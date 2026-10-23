@@ -43,7 +43,15 @@ from apps.research.services import SubmissionStateError, submit_research
 from apps.youtube import oauth
 from apps.youtube import services as youtube_services
 from apps.youtube.forms import StudentChannelForm
-from apps.youtube.submissions import ChannelSubmissionError, channel_block_reason, submit_student_channel
+from apps.youtube.submissions import (
+    FROZEN_STATUSES,
+    ChannelSubmissionError,
+    channel_block_reason,
+    edit_block_reason,
+    identity_locked,
+    submit_student_channel,
+    update_student_channel,
+)
 from apps.youtube.models import Video, YoutubeChannel
 
 # A student may start a new attempt only when the previous one is closed. These
@@ -340,6 +348,7 @@ def channels(request, student):
             "research_approved": student.research_submissions.filter(
                 status=SubmissionStatus.APPROVED
             ).exists(),
+            "frozen_statuses": [str(status) for status in FROZEN_STATUSES],
         },
     )
 
@@ -374,6 +383,37 @@ def channel_submit(request, student):
 
 
 @with_student
+@require_http_methods(["GET", "POST"])
+def channel_edit(request, student, pk):
+    """Correct a channel already handed in. Link and ID lock once staff confirm it."""
+    channel = get_object_or_404(YoutubeChannel.objects.for_actor(request.user), pk=pk)
+    blocked = edit_block_reason(channel)
+    if blocked:
+        messages.info(request, blocked)
+        return redirect("portal:channel_detail", pk=channel.pk)
+
+    locked = identity_locked(channel)
+    form = StudentChannelForm(request.POST or None, instance=channel, lock_identity=locked)
+    if request.method == "POST" and form.is_valid():
+        try:
+            changed = update_student_channel(request.user, student, channel, form)
+        except ChannelSubmissionError as exc:
+            form.add_error(None, str(exc))
+        else:
+            if changed:
+                messages.success(request, "Channel updated. Your instructor has been told what changed.")
+            else:
+                messages.info(request, "Nothing changed.")
+            return redirect("portal:channel_detail", pk=channel.pk)
+
+    return render(
+        request,
+        "portal/channel_edit.html",
+        {"active_nav": "portal:channels", "student": student, "channel": channel, "form": form, "locked": locked},
+    )
+
+
+@with_student
 def channel_detail(request, student, pk):
     channel = get_object_or_404(YoutubeChannel.objects.for_actor(request.user), pk=pk)
     return render(
@@ -385,6 +425,7 @@ def channel_detail(request, student, pk):
             "channel": channel,
             "availability": youtube_services.availability(channel),
             "oauth_configured": oauth.is_configured(),
+            "can_edit": edit_block_reason(channel) is None,
             "videos": Video.objects.filter(channel=channel).order_by(
                 F("published_at").desc(nulls_last=True)
             )[:10],

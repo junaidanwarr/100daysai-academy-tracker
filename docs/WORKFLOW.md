@@ -89,9 +89,10 @@ subscribers, views, video count, oldest video date, views per video).
 
 - **Save draft** as often as needed, then **Submit for review**. The status
   moves on its own to **Assignment Submitted**.
-- Each competitor is checked against four rules: 20–30 videos; subscribers at
-  least 0.5% of views; oldest video 2–3 months old; steady growth rather than
-  one viral spike.
+- Each competitor is checked against four rules: 1–30 videos; subscribers at
+  least 0.5% of views; oldest video 60–90 days old; views grow consistently,
+  with no single spike carrying the channel. Super Admins can retune the
+  numbers under **Settings → research**.
 
 **Instructor → Research**: score each criterion, write feedback, then decide.
 
@@ -143,6 +144,13 @@ Assignments do **not** change the student's status. Research drives the roadmap.
 6. The assigned instructor gets an in-app notification; with no instructor,
    every Super Admin does. The "research approved but no channel" alert stops
    for that student.
+7. **Edit channel** (on the channel page or in **My channels**) corrects a
+   submission. While it is Under Review everything can change; once staff
+   confirm it, the link and channel ID lock and only the name, creation date,
+   content type, language, schedule and notes can change. A suspended,
+   terminated or completed channel cannot be edited. Each edit is audited and
+   the instructor is told which fields changed; a changed channel ID
+   disconnects analytics, which belonged to the old channel.
 
 ### 5b. Staff confirm it
 

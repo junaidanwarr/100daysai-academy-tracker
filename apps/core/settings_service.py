@@ -52,7 +52,7 @@ DEFAULTS: dict[str, Any] = {
     YOUTUBE_SYNC_CADENCE: "DAILY",
     ENROLLMENT_ID_PREFIX: "100DAI",
     ACADEMY_NAME: "100DaysAI Academy",
-    COMPETITOR_MIN_VIDEOS: 20,
+    COMPETITOR_MIN_VIDEOS: 1,
     COMPETITOR_MAX_VIDEOS: 30,
     COMPETITOR_MIN_SUBS_VIEW_RATIO: "0.5",
     COMPETITOR_MIN_AGE_DAYS: 60,
@@ -77,7 +77,7 @@ def competitor_thresholds() -> dict:
             return fallback
 
     return {
-        "min_videos": int(number(COMPETITOR_MIN_VIDEOS, 20)),
+        "min_videos": int(number(COMPETITOR_MIN_VIDEOS, 1)),
         "max_videos": int(number(COMPETITOR_MAX_VIDEOS, 30)),
         "min_subs_view_ratio_percent": number(COMPETITOR_MIN_SUBS_VIEW_RATIO, 0.5),
         "min_age_days": int(number(COMPETITOR_MIN_AGE_DAYS, 60)),

@@ -23,15 +23,15 @@ TODAY = date(2026, 8, 4)
 
 class VideoCountTests(SimpleTestCase):
     def test_passes_inside_the_band(self):
-        for count in (20, 25, 30):
+        for count in (1, 12, 30):
             self.assertTrue(check_video_count(count).passed, count)
 
     def test_fails_just_below_and_just_above(self):
-        self.assertTrue(check_video_count(19).failed)
+        self.assertTrue(check_video_count(0).failed)
         self.assertTrue(check_video_count(31).failed)
 
     def test_says_which_side_it_failed_on(self):
-        self.assertIn("below 20", check_video_count(12).detail)
+        self.assertIn("below 1", check_video_count(0).detail)
         self.assertIn("above 30", check_video_count(80).detail)
 
     def test_missing_data_is_unknown_not_a_pass(self):
